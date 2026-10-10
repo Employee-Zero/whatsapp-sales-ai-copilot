@@ -1,0 +1,14 @@
+node_modules/
+*.log
+.DS_Store
+
+# Local-only artifacts that are not part of the extension. Anything a developer
+# keeps on the side while testing — notes, scratch scripts, captured request
+# bodies — belongs here rather than in the tree.
+tools/_local/
+*.local.md
+*.local.sh
+
+# Release artefacts. Built by tools/build-release.js; rebuilt on demand, never
+# committed — the published ZIP lives on the GitHub Releases page instead.
+dist/

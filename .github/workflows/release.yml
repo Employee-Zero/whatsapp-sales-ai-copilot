@@ -1,0 +1,69 @@
+name: Release
+
+# Builds the extension ZIP from a tag and attaches it to the GitHub Release.
+#
+# The ZIP is not committed to the repository. It is produced here, from the
+# tagged tree, so the download always matches the tag it is published under.
+#
+# This workflow deliberately does not publish anything by itself: it attaches an
+# artefact to a Release that already exists. Create the Release first, then push
+# the tag (or run this manually against one).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and attach (for example v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Build and attach the extension ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Work out which tag we are building
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out that tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.name }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The shared modules are generated into their classic copies. If the two
+      # have drifted, the extension that would ship is not the one in the tree,
+      # so fail here rather than publish something that was never built.
+      - name: Check the classic copies are up to date
+        run: node tools/build-classic.js --check
+
+      # No browser and no network: this is the offline suite, and it is the last
+      # gate before packaging.
+      - name: Run the offline tests
+        run: node tools/test-safety.js
+
+      - name: Build the ZIP
+        run: node tools/build-release.js
+
+      - name: Attach it to the Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.tag.outputs.name }}" \
+            dist/whatsapp-sales-ai-copilot-*.zip --clobber

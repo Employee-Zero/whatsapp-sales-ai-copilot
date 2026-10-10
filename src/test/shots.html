@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>panel shots</title>
+    <!--
+      Development-only page. Not referenced by the manifest and excluded from
+      release builds, exactly like bridge.html.
+
+      It exists because documentation screenshots must come from the real panel
+      rendering real markup, but must not contain a real customer's conversation.
+      So: the genuine sidepanel.html in an iframe, driven through the same probe
+      the tests use, populated with invented people and invented messages.
+
+      Used by tools/shoot.js, which loads this page in a throwaway Chrome profile
+      so no real profile — and therefore no real WhatsApp session — is involved.
+
+        shots.html?scene=setup      first-run setup, nothing configured
+      shots.html?scene=connected  setup filled in, Test Connection succeeded
+      shots.html?scene=quickstart the three steps shown after connecting
+      shots.html?scene=reply      a generated draft waiting to be reviewed
+      shots.html?scene=instruction a per-chat instruction plus a draft
+      shots.html?scene=followup   the send-without-preview confirmation
+      shots.html?scene=settings   the settings pane
+
+      The page sets document.title to "ready" (or "error: …") when the scene has
+      settled, which is the only signal tools/shoot.js waits on.
+    -->
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+      }
+      /* The panel is laid out for real at its true side-panel width; anything
+         narrower reflows text and the shot stops representing what a user sees. */
+      #stage {
+        display: block;
+        width: 400px;
+        height: 100vh;
+        border: 0;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="stage" title="side panel"></iframe>
+    <script src="shots.js"></script>
+  </body>
+</html>

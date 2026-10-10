@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp Sales AI Copilot",
+  "short_name": "Sales AI Copilot",
+  "version": "0.1.0",
+  "description": "An AI assistant for salespeople on WhatsApp Web: draft a reply from the conversation in front of you, edit it, then send it yourself.",
+  "minimum_chrome_version": "116",
+
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "https://web.whatsapp.com/*"
+  ],
+
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+
+  "action": {
+    "default_title": "WhatsApp Sales AI Copilot"
+  },
+
+  "side_panel": {
+    "default_path": "src/sidepanel/sidepanel.html"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": [
+        "src/shared/constants.classic.js",
+        "src/shared/utils.classic.js",
+        "src/content/whatsapp-adapter.js",
+        "src/content/content-script.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["src/shared/constants.js", "src/shared/utils.js", "src/shared/constants.classic.js", "src/shared/utils.classic.js"],
+      "matches": ["https://web.whatsapp.com/*"]
+    }
+  ]
+}

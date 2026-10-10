@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WhatsApp Sales AI Copilot</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <div class="accent-bar"></div>
+
+    <!--
+      The header IS the identity bar: who you are talking to on the left, their
+      number on the right, settings at the far right. There is no product title —
+      the panel is only ever open next to WhatsApp, so a title would be a line of
+      chrome that says nothing.
+    -->
+    <header class="identity">
+      <div class="who">
+        <span id="chat-name" class="who-name muted">No chat open</span>
+        <span id="chat-phone" class="who-phone"></span>
+      </div>
+      <button id="btn-settings" class="icon-btn" type="button" title="AI settings" aria-label="AI settings" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <main class="app-body">
+      <!--
+        ===================== First run: connect an AI provider ==============
+
+        Shown until a Base URL, an API key and a Model ID are all saved. The
+        extension has no built-in AI and no default provider, so the honest
+        first screen is not a disabled Generate button — it is this form.
+
+        The three fields the request cannot be made without are marked Required
+        and are the same three the worker checks before it sends anything.
+      -->
+      <section id="setup" class="setup hidden">
+        <h1 class="setup-title">Welcome to WhatsApp Sales AI Copilot</h1>
+        <p class="setup-sub">Your AI assistant for smarter customer replies and follow-ups.</p>
+
+        <div class="step-head">
+          <span class="step-num">1</span>
+          <span class="step-name">Connect your AI provider</span>
+        </div>
+        <p class="step-body">
+          To generate replies, you'll need an API key from an OpenAI-compatible AI provider.
+        </p>
+
+        <label class="field">
+          <span class="field-label">API Base URL <span class="req">Required</span></span>
+          <input id="su-baseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">API Key <span class="req">Required</span></span>
+          <span class="key-row">
+            <input id="su-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="the key from your provider" />
+            <button id="su-toggle-key" class="ghost tiny" type="button">Show</button>
+          </span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Model ID <span class="req">Required</span></span>
+          <input id="su-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Fallback Base URL <span class="opt">Optional</span></span>
+          <input id="su-fallback" type="text" spellcheck="false" placeholder="only used if the first address cannot be reached" />
+        </label>
+
+        <div class="row">
+          <button id="su-test" class="ghost" type="button">Test Connection</button>
+          <button id="su-save" class="primary" type="button">Save &amp; Continue</button>
+        </div>
+        <div id="su-result" class="test-result hidden"></div>
+
+        <details class="help">
+          <summary>Where do I find these details?</summary>
+          <div class="help-body">
+            <p>
+              They come from the AI service you already have an account with — this extension
+              does not provide AI by itself, and does not recommend one provider over another.
+            </p>
+            <ul>
+              <li><b>API Base URL</b> — in your provider's developer or API documentation. It looks like a web address, usually ending in <code>/v1</code>.</li>
+              <li><b>API Key</b> — in your provider's dashboard, under API keys. Copy the whole key; it does not have to start with any particular letters.</li>
+              <li><b>Model ID</b> — the exact name of the model you want to use, as your provider writes it.</li>
+            </ul>
+            <p>
+              You can change any of this later from the ⚙ button at the top right.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!--
+        ===================== After a successful connection ==================
+
+        Shown once, right after the setup form saves, and dismissed for good.
+        "Steps 2 to 4" rather than a wizard: the user is already looking at
+        WhatsApp, so the only useful thing left is to say what to click.
+      -->
+      <section id="quickstart" class="setup hidden">
+        <h1 class="setup-title">You're connected</h1>
+        <p class="setup-sub">Three steps from here to your first AI reply.</p>
+
+        <ol class="qs-list">
+          <li>
+            <span class="step-num">2</span>
+            <span class="qs-text"><b>Open a WhatsApp conversation</b>
+              <small>Open WhatsApp Web and select the customer you want to reply to.</small></span>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <span class="qs-text"><b>Generate your first reply</b>
+              <small>Click Generate Reply to draft a response based on the conversation.</small></span>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <span class="qs-text"><b>Review &amp; send</b>
+              <small>Read or edit the message before sending it. Nothing is sent until you click Send.</small></span>
+          </li>
+        </ol>
+
+        <div class="row">
+          <button id="qs-done" class="primary" type="button">Got it</button>
+        </div>
+      </section>
+
+      <!-- ===================== AI settings ===================== -->
+      <section id="settings" class="settings hidden">
+        <div class="seg tabs" role="tablist">
+          <button id="tab-basic" class="seg-btn is-on" type="button" role="tab" aria-selected="true">Basic</button>
+          <button id="tab-advanced" class="seg-btn" type="button" role="tab" aria-selected="false">Advanced</button>
+        </div>
+
+        <!-- ---------- Basic ---------- -->
+        <div id="pane-basic" class="pane">
+          <label>
+            How the AI should write
+            <textarea id="cfg-systemPrompt" class="prompt-box" spellcheck="false" rows="8"></textarea>
+          </label>
+          <div class="row">
+            <button id="btn-reset-prompt" class="ghost tiny" type="button">Reset to default</button>
+          </div>
+
+          <label>
+            Conversation sent to the AI
+            <select id="cfg-contextMessages"></select>
+          </label>
+
+          <label>
+            Thinking depth
+            <select id="cfg-thinking"></select>
+          </label>
+          <p id="thinking-hint" class="hint"></p>
+        </div>
+
+        <!-- ---------- Advanced ---------- -->
+        <div id="pane-advanced" class="pane hidden">
+          <label>
+            Primary Base URL
+            <input id="cfg-primaryBaseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
+          </label>
+
+          <label>
+            Fallback Base URL
+            <input id="cfg-fallbackBaseUrl" type="text" spellcheck="false" placeholder="optional" />
+          </label>
+
+          <label>
+            API Key
+            <span class="key-row">
+              <input id="cfg-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="your provider's API key" />
+              <button id="btn-toggle-key" class="ghost tiny" type="button">Show</button>
+            </span>
+          </label>
+
+          <label>
+            Model ID
+            <input id="cfg-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
+          </label>
+
+          <div class="row">
+            <label>
+              Temperature
+              <input id="cfg-temperature" type="number" step="0.1" min="0" max="2" />
+            </label>
+            <label>
+              Max output tokens
+              <input id="cfg-maxTokens" type="number" step="64" min="0" max="8192" />
+            </label>
+          </div>
+          <p class="hint">
+            Max output tokens: <b>0 = automatic</b>, worked out from reply length and thinking depth.
+            On a reasoning model the thinking is billed against this same budget, so a value
+            that is too small returns an empty reply. Currently <span id="effective-tokens">—</span>.
+          </p>
+
+          <label>
+            Transcript character cap
+            <input id="cfg-maxChars" type="number" step="1000" min="1000" max="100000" />
+          </label>
+
+          <div class="row">
+            <button id="btn-test" class="ghost" type="button">Test Connection</button>
+            <button id="btn-clear-key" class="ghost danger tiny" type="button">Clear stored API key</button>
+          </div>
+          <div id="test-result" class="test-result hidden"></div>
+        </div>
+
+        <div class="row">
+          <button id="btn-save-config" class="primary" type="button">Save Settings</button>
+        </div>
+
+        <p class="hint">
+          Saved in this browser profile only. Your key is never logged, never shown in status
+          messages, and never leaves this machine except as the Authorization header of the AI
+          request you configured. It is not part of the repository — everyone who installs this
+          extension enters their own.
+        </p>
+      </section>
+
+      <!-- ===================== Conversation strip ===================== -->
+      <div class="strip">
+        <span id="chat-count" class="strip-count">0</span>
+        <span class="strip-label">messages</span>
+        <span id="chat-breakdown" class="strip-breakdown"></span>
+        <button id="btn-read" class="mini" type="button" title="Re-read the conversation currently loaded in WhatsApp Web">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+            <path d="M21 3v6h-6"></path>
+          </svg>
+          Re-read
+        </button>
+      </div>
+
+      <!-- ===================== Status / notices ===================== -->
+      <div id="status" class="status hidden" role="status"></div>
+      <div id="blocked" class="notice err hidden" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 8v4"></path>
+          <path d="M12 16h.01"></path>
+        </svg>
+        <span id="blocked-detail"></span>
+      </div>
+
+      <!--
+        Per-chat instruction. Three states, one visible at a time:
+          empty   → a 30px dashed row that costs almost nothing
+          editing → an amber box, clearly not the reply box
+          set     → a two-line amber chip, clickable to edit again
+        It collapses to the chip after a Generate so the reply gets the room,
+        but stays on screen: you need to be able to see what you asked for
+        while judging whether the reply answered it.
+
+        Amber throughout, because green in this panel means "output from the
+        AI" — this is the one thing on screen that is input TO the AI.
+      -->
+      <button id="ins-add" class="ins-add" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14"></path>
+          <path d="M5 12h14"></path>
+        </svg>
+        <span>Add an instruction for this chat</span>
+        <span class="ins-optional">optional</span>
+      </button>
+
+      <div id="ins-panel" class="ins-panel hidden">
+        <div class="ins-head">
+          <span class="label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path>
+            </svg>
+            Instruction
+          </span>
+          <span class="ins-scope">this chat only</span>
+          <button id="ins-clear" class="ins-link hidden" type="button">Clear</button>
+          <button id="ins-done" class="ins-link" type="button">Done</button>
+        </div>
+        <textarea
+          id="ins-box"
+          class="ins-box"
+          rows="3"
+          placeholder="Anything specific about this customer? e.g. ask how the trial installation went"
+          spellcheck="false"
+        ></textarea>
+      </div>
+
+      <button id="ins-chip" class="ins-chip hidden" type="button">
+        <span class="ins-chip-label">Instruction</span>
+        <span id="ins-chip-text" class="ins-chip-text"></span>
+        <span class="ins-chip-edit">Edit</span>
+      </button>
+
+      <!-- ===================== AI reply ===================== -->
+      <div class="reply-head">
+        <span class="label">AI Reply</span>
+        <span id="reply-meta" class="count"></span>
+      </div>
+      <textarea
+        id="reply"
+        class="reply-box"
+        placeholder="Generate a reply, or type your own message here…"
+        spellcheck="false"
+      ></textarea>
+
+      <!--
+        Reply length. Its own slim row directly above the buttons: it changes what
+        the next Generate produces, so it belongs next to the button that acts on
+        it, not buried in Settings. No "Length" caption — three named options in a
+        segmented control explain themselves, and the caption cost a whole line.
+        The right-hand side reports how long the current draft actually is.
+      -->
+      <div class="length-row">
+        <div id="length-seg" class="seg" role="group" aria-label="Reply length">
+          <button class="seg-btn" type="button" data-length="short">Short</button>
+          <button class="seg-btn" type="button" data-length="medium">Medium</button>
+          <button class="seg-btn" type="button" data-length="long">Long</button>
+        </div>
+        <span id="length-count" class="count"></span>
+      </div>
+
+      <!-- ===================== Send ===================== -->
+      <div class="row">
+        <button id="btn-generate" class="primary" type="button">Generate Reply</button>
+        <button id="btn-send" class="outline" type="button" disabled>Send</button>
+      </div>
+
+      <!--
+        The shortcut that sends without a preview, and its confirmation.
+
+        It is deliberately the only two-step control in the panel. Every other
+        button either does not send, or sends text the user is looking at; this
+        one puts a message the user has never seen in front of a real customer,
+        so a single stray click must not be enough. The confirmation also states
+        the recipient, because "which chat is this about" is exactly the thing a
+        misclick gets wrong.
+      -->
+      <button id="btn-followup" class="quick" type="button" disabled>
+        <span class="bolt" aria-hidden="true">⚡</span>
+        <span class="txt">
+          <b>Follow-up &amp; Send</b>
+          <small>Writes and sends in one step — you won't see it first</small>
+        </span>
+      </button>
+
+      <div id="followup-confirm" class="confirm hidden" role="alertdialog" aria-labelledby="fu-title">
+        <p id="fu-title" class="confirm-title">Send without showing you the message first?</p>
+        <p class="confirm-text">
+          The AI will read this conversation, write a reply and send it straight to
+          <b id="fu-recipient">this chat</b>. You will not get to read or edit it.
+        </p>
+        <div class="row">
+          <button id="btn-followup-cancel" class="ghost" type="button">Cancel</button>
+          <button id="btn-followup-go" class="danger" type="button">Generate &amp; Send</button>
+        </div>
+      </div>
+    </main>
+
+    <script src="../shared/constants.classic.js"></script>
+    <script src="../shared/utils.classic.js"></script>
+    <script src="sidepanel.js"></script>
+  </body>
+</html>

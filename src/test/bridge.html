@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Follow-up dev bridge</title>
+    <!--
+      Development-only page. It is never opened by the extension itself and is
+      not referenced by the manifest; a person opens it by hand during testing.
+      See AGENTS.md §4 for why it exists.
+
+      It renders the real side panel in an iframe so the panel can be driven in
+      its own realm, and it long-polls a loopback server (tools/bridge-server.js)
+      for commands. That server is what the Node test scripts talk to.
+    -->
+    <style>
+      :root {
+        color-scheme: light;
+        --line: #d8d8d8;
+        --muted: #6b6b6b;
+        --ok: #1a7f37;
+        --bad: #b42318;
+        --warn: #8a5a00;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-size: 13px;
+        color: #111;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      main {
+        flex: 0 0 380px;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      p.sub {
+        margin: 0 0 12px;
+        color: var(--muted);
+      }
+      #state {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+      }
+      #state.idle {
+        background: #eee;
+        color: var(--muted);
+      }
+      #state.connect {
+        background: #fdf0d5;
+        color: var(--warn);
+      }
+      #state.ok {
+        background: #e6f4ea;
+        color: var(--ok);
+      }
+      #state.bad {
+        background: #fde8e6;
+        color: var(--bad);
+      }
+      button {
+        font: inherit;
+        padding: 6px 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #f6f6f6;
+      }
+      #log {
+        margin-top: 12px;
+        max-height: 460px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #fbfbfb;
+      }
+      #log .t {
+        color: var(--muted);
+      }
+      #log .e {
+        color: var(--bad);
+      }
+      aside {
+        flex: 0 0 auto;
+      }
+      aside .cap {
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
+      /* The panel has to be laid out for real: the tests measure heights and
+         read computed colours, both of which are meaningless under display:none. */
+      #panel-frame {
+        width: 360px;
+        height: 640px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Follow-up dev bridge</h1>
+      <p class="sub">Loopback command channel for the Node test scripts.</p>
+
+      <p><span id="state" class="idle">starting</span></p>
+      <p><button id="connect" hidden>Connect to the test server</button></p>
+      <div id="log"></div>
+    </main>
+
+    <aside>
+      <p class="cap">The real side panel, in an iframe</p>
+      <iframe id="panel-frame" title="side panel under test"></iframe>
+    </aside>
+
+    <script type="module" src="bridge.js"></script>
+  </body>
+</html>

@@ -1,0 +1,1093 @@
+/**
+ * Side panel — light theme.
+ *
+ * Palette is deliberately close to WhatsApp Web's own light theme (white cards,
+ * a green accent, slate text) without copying it: WhatsApp's green is #00a884
+ * and reads as neon on a white surface, so the accent here is darkened to
+ * #0e8a6b for contrast against white while staying recognisably "WhatsApp".
+ *
+ * Layout, top to bottom — one idea per row, nothing repeated:
+ *   identity bar (name · number · ⚙)
+ *   conversation strip (how much history is loaded · Re-read)
+ *   status / notices
+ *   AI Reply (label · draft state) + the box
+ *   reply length (Short|Medium|Long · length of the current draft)
+ *   Generate Reply | Send
+ *   Follow-up & Send
+ */
+
+:root {
+  --page: #eef2f1;
+  --panel: #f8fbfa;
+  --card: #ffffff;
+  --border: #e3e9e7;
+  --border-strong: #d3dbd8;
+  --text: #0f172a;
+  --muted: #64748b;
+  --muted-2: #94a3b8;
+  --accent: #0e8a6b;
+  --accent-dark: #0a6d54;
+  --accent-soft: #e7f5f1;
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+  --danger-border: #fecdca;
+  --warn: #b54708;
+  --warn-soft: #fffaeb;
+  --warn-border: #fedf89;
+  --ok: #067647;
+  --ok-soft: #ecfdf3;
+  --ok-border: #abefc6;
+  --radius: 11px;
+  --radius-sm: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.accent-bar {
+  height: 3px;
+  background: linear-gradient(90deg, #0e8a6b, #3cbf95);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Identity bar
+   -------------------------------------------------------------------------- */
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px 9px 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.who {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.who-name {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.who-name.muted {
+  color: var(--muted-2);
+  font-weight: 500;
+}
+
+/* The number is secondary to the name, so it is quiet until you look for it —
+   but it is always the full international form, with its '+'. */
+.who-phone {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.who-phone:empty {
+  display: none;
+}
+
+.icon-btn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: #f1f5f4;
+  color: var(--text);
+}
+
+.icon-btn[aria-expanded='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Body
+   -------------------------------------------------------------------------- */
+
+.app-body {
+  padding: 12px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   Conversation strip
+   -------------------------------------------------------------------------- */
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+
+.strip-count {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.strip-breakdown {
+  font-variant-numeric: tabular-nums;
+}
+
+.strip-breakdown:not(:empty)::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--muted-2);
+}
+
+/* The small "Re-read" affordance — deliberately quiet: reading is automatic,
+   this only exists for the rare case where the panel looks stale. */
+.mini {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.mini:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.mini:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mini svg {
+  width: 12px;
+  height: 12px;
+}
+
+.mini.busy svg {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Per-chat instruction
+   --------------------------------------------------------------------------
+
+   Amber, deliberately: green in this panel means "produced by the AI", and this
+   is the one control that is input TO it. The colour difference is the whole
+   safety mechanism — the reply box and the instruction box must never be
+   mistaken for each other, because one of them gets sent to a customer. */
+
+.ins-add {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.ins-add:hover {
+  border-color: var(--warn-border);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.ins-add svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+.ins-optional {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
+.ins-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 2px 6px;
+}
+
+.ins-head .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.ins-head .label svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ins-scope {
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
+.ins-link {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ins-link:hover {
+  color: var(--warn);
+}
+
+.ins-link + .ins-link {
+  margin-left: 0;
+}
+
+.ins-box {
+  width: 100%;
+  min-height: 62px;
+  background: var(--warn-soft);
+  border: 1px solid var(--warn-border);
+  border-left: 3px solid #f0a202;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font: inherit;
+  line-height: 1.5;
+  color: #7a3c05;
+  resize: vertical;
+}
+
+.ins-box::placeholder {
+  color: #c99a5b;
+}
+
+.ins-box:focus {
+  outline: none;
+  border-color: #f0a202;
+  border-left-color: #f0a202;
+  box-shadow: 0 0 0 3px rgba(240, 162, 2, 0.14);
+}
+
+/* The collapsed form. Two lines of the instruction stay readable so the reply
+   can be checked against what was actually asked for. */
+.ins-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--warn-border);
+  border-left: 3px solid #f0a202;
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: #7a3c05;
+  text-align: left;
+}
+
+.ins-chip:hover {
+  background: #fff4dd;
+}
+
+.ins-chip-label {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warn);
+  padding-top: 1px;
+}
+
+.ins-chip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ins-chip-edit {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--warn);
+  opacity: 0.8;
+  padding-top: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   Reply
+   -------------------------------------------------------------------------- */
+
+.reply-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 2px 2px 6px;
+}
+
+.reply-head .label {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.reply-head .count {
+  font-size: 11.5px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.reply-box {
+  width: 100%;
+  min-height: 118px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 12px;
+  font: inherit;
+  line-height: 1.55;
+  color: var(--text);
+  resize: vertical;
+}
+
+.reply-box::placeholder {
+  color: var(--muted-2);
+}
+
+.reply-box:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 138, 107, 0.12);
+}
+
+/* --------------------------------------------------------------------------
+   Segmented control (reply length, settings tabs)
+   -------------------------------------------------------------------------- */
+
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: #e9efed;
+  border-radius: 9px;
+}
+
+.seg-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.seg-btn:hover:not(.is-on) {
+  color: var(--text);
+}
+
+.seg-btn.is-on {
+  background: var(--card);
+  color: var(--accent-dark);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.seg.tabs {
+  display: flex;
+  width: 100%;
+}
+
+.seg.tabs .seg-btn {
+  flex: 1 1 0;
+}
+
+/* The length row: control on the left, live word count on the right. */
+.length-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: -2px;
+}
+
+.length-row .count {
+  font-size: 11.5px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+.row > button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+button.primary {
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(14, 138, 107, 0.25);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+button.primary:disabled {
+  background: #e7edeb;
+  color: #9daba7;
+  box-shadow: none;
+}
+
+/* Send is the commit action, so it keeps the accent colour but a lighter
+   weight than Generate — the eye lands on Generate first, which is correct:
+   nothing should be sent that has not been read. */
+button.outline {
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--card);
+  color: var(--accent-dark);
+}
+
+button.outline:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+button.outline:disabled {
+  border-color: var(--border-strong);
+  color: var(--muted-2);
+  background: var(--card);
+}
+
+button.ghost {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--card);
+  color: var(--text);
+}
+
+button.ghost:hover:not(:disabled) {
+  background: #f4f7f6;
+}
+
+button.ghost:disabled {
+  opacity: 0.55;
+}
+
+button.tiny {
+  height: 28px;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+}
+
+button.danger:hover:not(:disabled) {
+  background: #fee4e2;
+}
+
+button.busy {
+  position: relative;
+  color: transparent !important;
+}
+
+button.busy::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 15px;
+  height: 15px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+button.primary.busy::after {
+  border-color: #fff;
+  border-top-color: transparent;
+}
+
+/* Full-width secondary action: generate + write + send, no preview. Tinted
+   rather than outlined so it reads as a shortcut, not a third equal choice. */
+button.quick {
+  width: 100%;
+  height: auto;
+  padding: 10px 12px;
+  gap: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--accent-dark);
+}
+
+button.quick:hover:not(:disabled) {
+  background: #d9efe9;
+}
+
+button.quick:disabled {
+  opacity: 0.5;
+}
+
+button.quick .bolt {
+  font-size: 14px;
+  line-height: 1;
+}
+
+button.quick .txt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+button.quick .txt b {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+button.quick .txt small {
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+/* --------------------------------------------------------------------------
+   Status + notices
+   -------------------------------------------------------------------------- */
+
+.status {
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.45;
+  background: #f1f5f4;
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+}
+
+.status.error {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.status.warn {
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
+
+.status.success {
+  background: var(--ok-soft);
+  border-color: var(--ok-border);
+  color: var(--ok);
+}
+
+.notice {
+  display: flex;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.notice svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 1px;
+}
+
+.notice.err {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+/* --------------------------------------------------------------------------
+   Settings
+   -------------------------------------------------------------------------- */
+
+.settings {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.settings input,
+.settings select,
+.settings textarea {
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.settings input,
+.settings select {
+  height: 34px;
+}
+
+.settings select {
+  cursor: pointer;
+}
+
+.settings textarea {
+  padding: 9px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.prompt-box {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+}
+
+.settings input:focus,
+.settings select:focus,
+.settings textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 138, 107, 0.12);
+}
+
+.key-row {
+  display: flex;
+  gap: 6px;
+}
+
+.key-row input {
+  flex: 1 1 auto;
+}
+
+.key-row button {
+  flex: none;
+}
+
+.settings .hint {
+  margin: -2px 0 0;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+.settings .hint b {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.test-result {
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.test-result.success {
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-border);
+  color: var(--ok);
+}
+
+.test-result.error {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+/* --------------------------------------------------------------------------
+   First run — connect your AI provider
+
+   This is the only screen in the panel written for someone who has never seen
+   it before, so it is the only one allowed to be wordy. Everything is one
+   column, the three fields that are actually required say so, and the help is
+   folded away rather than pushing the form off the bottom.
+   -------------------------------------------------------------------------- */
+
+.setup {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setup-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.setup-sub {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-num {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-name {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.step-body {
+  margin: -6px 0 0 28px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.setup .field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.req,
+.opt {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.req {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid var(--warn-border);
+}
+
+.opt {
+  background: #f1f5f4;
+  color: var(--muted-2);
+  border: 1px solid var(--border);
+}
+
+.setup input {
+  height: 34px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.setup input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 138, 107, 0.12);
+}
+
+.setup .row button {
+  height: 36px;
+  font-size: 12.5px;
+}
+
+.help {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.help summary {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent-dark);
+  cursor: pointer;
+}
+
+.help-body {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.help-body p {
+  margin: 8px 0;
+}
+
+.help-body ul {
+  margin: 8px 0;
+  padding-left: 18px;
+}
+
+.help-body li {
+  margin-bottom: 5px;
+}
+
+.help-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  background: #f1f5f4;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+/* The short "what to click next" list shown once, after connecting. */
+.qs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qs-list li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.qs-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+}
+
+.qs-text b {
+  font-weight: 650;
+}
+
+.qs-text small {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   The one confirmation in the panel
+
+   Follow-up & Send is the only control that can put a message the user has
+   never read in front of a real customer, so it is the only one that asks
+   twice. Danger-coloured, because the safe answer is the other button.
+   -------------------------------------------------------------------------- */
+
+.confirm {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.confirm-text {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.confirm-text b {
+  font-weight: 650;
+}
+
+.confirm .row button {
+  height: 34px;
+  font-size: 12.5px;
+}
