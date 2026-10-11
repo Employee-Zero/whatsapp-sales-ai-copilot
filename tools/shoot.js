@@ -58,7 +58,6 @@ const SCENES = [
   { scene: 'quickstart', file: '03-what-to-do-next.png', height: 800 },
   { scene: 'reply', file: '04-generated-draft.png', height: 820 },
   { scene: 'instruction', file: '05-per-chat-instruction.png', height: 820 },
-  { scene: 'followup', file: '06-followup-confirmation.png', height: 820 },
   { scene: 'settingsAdvanced', file: '07-settings.png', height: 1400 },
   { scene: 'chatgpt', file: '08-chatgpt-helper-off.png', height: 1180 },
   { scene: 'chatgptConnected', file: '09-chatgpt-connected.png', height: 1180 },

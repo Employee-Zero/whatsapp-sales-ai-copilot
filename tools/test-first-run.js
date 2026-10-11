@@ -156,42 +156,18 @@ function check(name, cond, detail) {
   check('the dismissal is remembered in storage', flags.dismissed === true, JSON.stringify(flags));
 
   // ---------------------------------------------------------------------- D
-  console.log('\n[D] Follow-up & Send asks first\n');
+  console.log('\n[D] Follow-up & Send is one click, so it must never be clicked\n');
 
+  // There is no confirmation step any more: pressing this button generates a
+  // reply and sends it to a real customer. A test may therefore only look at
+  // it, never press it — see AGENTS.md §5 rule 1.
   await pin(ctxFor(CHAT_A, 'Alice'));
   await sleep(200);
   u = await ui();
-  check('the question is not on screen to begin with', u.followupConfirm === false);
-  check('and it is asked before it can send', /you won't see it first/.test(u.followupLabel || ''), u.followupLabel);
+  check('the old confirmation dialog is gone', u.followupConfirm === 'MISSING', String(u.followupConfirm));
+  check('and so is the button that committed it', u.followupGo === 'MISSING', String(u.followupGo));
+  check('the button still warns the message is not shown first', /you won't see it first/.test(u.followupLabel || ''), u.followupLabel);
   check('the button is offered while a chat is open', u.followupDisabled === false);
-
-  await page.panel('click', 'followup');
-  await sleep(200);
-  u = await ui();
-  check('clicking it opens the confirmation', u.followupConfirm === true);
-
-  const recipient = (await ui()).followupRecipient;
-  check('the confirmation names the recipient', /Alice/.test(String(recipient)), String(recipient));
-
-  await page.panel('click', 'followupCancel');
-  await sleep(200);
-  u = await ui();
-  check('Cancel closes it', u.followupConfirm === false);
-
-  await page.panel('click', 'followup');
-  await sleep(150);
-  await pin(ctxFor(CHAT_B, 'Bob'));
-  await sleep(250);
-  u = await ui();
-  check('switching customer drops the question', u.followupConfirm === false);
-
-  // A question that has stopped being about the open chat must not survive a
-  // moment where there is no chat at all, either.
-  await page.panel('openFollowupConfirm');
-  await page.panel('detachChat');
-  await sleep(250);
-  u = await ui();
-  check('so does closing the conversation', u.followupConfirm === false);
 
   // ---------------------------------------------------------------------- E
   console.log('\n[E] a sent draft cannot be sent twice\n');

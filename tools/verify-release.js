@@ -276,7 +276,7 @@ async function main() {
       });
     })()`);
     const m = JSON.parse(modes);
-    check('both connection methods are offered', m.offered.join(',') === 'chatgpt,apiKey', m.offered.join(','));
+    check('both connection methods are offered, key first', m.offered.join(',') === 'apiKey,chatgpt', m.offered.join(','));
     check('the key method is the one selected by default', m.on.join(',') === 'apiKey', m.on.join(','));
     check('exactly one pane is open, and it is the key one', m.apiKey === true && m.chatgpt === false, JSON.stringify(m));
     check('the ChatGPT pane is wired, not just markup', m.signIn && m.model, JSON.stringify(m));

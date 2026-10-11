@@ -294,17 +294,6 @@ const scenes = {
     },
   },
 
-  /** The confirmation that stands between a click and a message with no preview. */
-  followup: {
-    async run() {
-      const p = probe();
-      await pinChat();
-      p.overrideConfig(CONFIGURED);
-      p.openFollowupConfirm();
-      await settle();
-    },
-  },
-
   /** Settings, on the Basic pane. */
   settings: {
     async run() {

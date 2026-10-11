@@ -17,8 +17,7 @@
 
 /* eslint-env browser */
 /* global renderContext, renderInstruction, syncPanesToChat, readChat,
-   renderConfig, renderOnboarding, focusSetup, openFollowupConfirm,
-   closeFollowupConfirm, describeError, el, cfg, onboarding,
+   renderConfig, renderOnboarding, focusSetup, describeError, el, cfg, onboarding,
    chatgptStatus, chatgptModels, renderChatGptPanes, renderConnectionPill,
    CONNECTION_MODE */
 
@@ -45,7 +44,6 @@
     suResult: 'su-result',
     followupConfirm: 'followup-confirm',
     followupGo: 'btn-followup-go',
-    followupCancel: 'btn-followup-cancel',
     followup: 'btn-followup',
     generate: 'btn-generate',
     send: 'btn-send',
@@ -376,9 +374,10 @@
       suModel: value('suModel'),
       suFallback: value('suFallback'),
       suResult: text('suResult'),
+      // Both read 'MISSING' since the confirmation was removed: the checks in
+      // tools/test-first-run.js assert exactly that.
       followupConfirm: visible('followupConfirm'),
-      followupRecipient: text('fu-recipient'),
-      followupTitle: text('fu-title'),
+      followupGo: visible('followupGo'),
       followupLabel: text('followup'),
       followupDisabled: disabled('followup'),
       generateDisabled: disabled('generate'),
@@ -499,8 +498,6 @@
     overrideChatGptStatus: overrideChatGptStatus,
     onboardingState: onboardingState,
     focusSetup: focusSetup,
-    openFollowupConfirm: openFollowupConfirm,
-    closeFollowupConfirm: closeFollowupConfirm,
     describeError: describeError,
     snapshot: snapshot,
     height: height,

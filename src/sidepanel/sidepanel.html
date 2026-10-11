@@ -64,8 +64,13 @@
         </p>
 
         <div id="su-modes" class="seg modes" role="group" aria-label="How to connect">
-          <button class="seg-btn" type="button" data-mode="chatgpt">ChatGPT subscription</button>
-          <button class="seg-btn" type="button" data-mode="apiKey">Your own API key</button>
+          <button class="seg-btn" type="button" data-mode="apiKey">
+            <span class="seg-label">Your own API key</span>
+            <span class="seg-tag">Recommended</span>
+          </button>
+          <button class="seg-btn" type="button" data-mode="chatgpt">
+            <span class="seg-label">ChatGPT subscription</span>
+          </button>
         </div>
         <p id="su-mode-hint" class="hint"></p>
 
@@ -85,6 +90,23 @@
         <div id="su-chatgpt" class="pane hidden">
           <div id="su-cg-status" class="conn-status">Checking the local helper…</div>
 
+          <!--
+            The one thing that separates this method from the other, said before
+            the button rather than after a failed press. Inline and short, not a
+            dialog — and it collapses once the account is connected, because
+            from then on it is a question the user has already answered. The
+            expandable "Why the Helper?" below stays either way.
+          -->
+          <div id="su-cg-why" class="why">
+            <p class="why-title">Why is a Mac Helper required?</p>
+            <p class="why-body">
+              Our current ChatGPT sign-in uses OpenAI's local authorization flow,
+              and browser-only sign-in is not available for this extension yet.
+              The Helper runs locally on your Mac to complete the sign-in and
+              store the credential securely. Install it once.
+            </p>
+          </div>
+
           <div class="row">
             <button id="su-cg-signin" class="primary" type="button">Continue with ChatGPT</button>
             <button id="su-cg-signout" class="ghost tiny hidden" type="button">Sign out</button>
@@ -103,26 +125,38 @@
           <div id="su-cg-result" class="test-result hidden"></div>
 
           <details class="help">
-            <summary>Do I need to install anything?</summary>
+            <summary>Why the Helper?</summary>
             <div class="help-body">
               <p>
-                Yes — one small program, which you run once and leave running. It is
-                part of this project and it is what holds your ChatGPT sign-in:
-                your browser never sees the credential, and neither does this
+                The Helper is part of this project — not an OpenAI product. It is
+                a small program that runs on this Mac, completes the sign-in
+                through OpenAI's local authorization flow, and keeps the
+                resulting credential in a file that only it can read. Your
+                browser never sees the credential, and neither does this
                 extension.
               </p>
-              <p>From the folder you downloaded, run:</p>
-              <p><code id="su-cg-cmd">node helper/siwc-helper.js</code></p>
               <p>
-                It needs Node.js 20 or later. There is nothing to install first —
-                the helper has no dependencies.
+                <b>Install it:</b> the macOS installer is not published yet, so
+                there is nothing to download today.
+                <a href="https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases" target="_blank" rel="noopener">View Helper releases</a>
+                — once the installer is there, it installs the Helper and starts
+                it in the background.
               </p>
               <p>
-                Signing in opens a normal browser tab at openai.com. If your
-                ChatGPT account is not eligible for this, or you would rather not
-                use it, switch to <b>Your own API key</b> above — that method
-                needs nothing installed and works with any OpenAI-compatible
-                provider.
+                If you already have the project folder, you can start the Helper
+                yourself with:
+              </p>
+              <p><code id="su-cg-cmd">node helper/siwc-helper.js</code></p>
+              <p>
+                That needs Node.js 20 or later. Nothing else has to be installed
+                first — the Helper has no dependencies.
+              </p>
+              <p>
+                Whether your ChatGPT plan can be used this way depends on your
+                account, and signing in opens a normal browser tab at openai.com.
+                If it turns out not to work for you, or you would rather not use
+                it, switch to <b>Your own API key</b> above — that method needs
+                nothing installed and works with any OpenAI-compatible provider.
               </p>
             </div>
           </details>
@@ -258,8 +292,13 @@
           -->
           <div class="conn-head">AI connection</div>
           <div id="cfg-modes" class="seg modes" role="group" aria-label="How to connect">
-            <button class="seg-btn" type="button" data-mode="chatgpt">ChatGPT subscription</button>
-            <button class="seg-btn" type="button" data-mode="apiKey">Your own API key</button>
+            <button class="seg-btn" type="button" data-mode="apiKey">
+              <span class="seg-label">Your own API key</span>
+              <span class="seg-tag">Recommended</span>
+            </button>
+            <button class="seg-btn" type="button" data-mode="chatgpt">
+              <span class="seg-label">ChatGPT subscription</span>
+            </button>
           </div>
           <p id="cfg-mode-hint" class="hint"></p>
 
@@ -288,15 +327,22 @@
             </label>
 
             <details class="help">
-              <summary>What is the local helper?</summary>
+              <summary>Why the Helper?</summary>
               <div class="help-body">
                 <p>
-                  A small program that runs on this computer and holds your ChatGPT
+                  The Helper is part of this project — not an OpenAI product. It
+                  is a small program that runs on this Mac and holds your ChatGPT
                   sign-in. OpenAI's sign-in for open-source apps only accepts a
                   callback to <code>127.0.0.1</code>, which a browser extension
-                  cannot provide, so this extension asks the helper to do it.
+                  cannot provide, so this extension asks the Helper to do it.
                 </p>
-                <p>Start it with:</p>
+                <p>
+                  <b>Install it:</b> the macOS installer is not published yet, so
+                  there is nothing to download today.
+                  <a href="https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases" target="_blank" rel="noopener">View Helper releases</a>
+                  — once it is there, it installs the Helper and starts it in the
+                  background. Otherwise, start it with:
+                </p>
                 <p><code id="cfg-cg-cmd">node helper/siwc-helper.js</code></p>
                 <p>
                   <b>Send a test request</b> spends a little of your plan's
@@ -497,14 +543,12 @@
       </div>
 
       <!--
-        The shortcut that sends without a preview, and its confirmation.
+        The shortcut that sends without a preview, in one click.
 
-        It is deliberately the only two-step control in the panel. Every other
-        button either does not send, or sends text the user is looking at; this
-        one puts a message the user has never seen in front of a real customer,
-        so a single stray click must not be enough. The confirmation also states
-        the recipient, because "which chat is this about" is exactly the thing a
-        misclick gets wrong.
+        Every other button either does not send, or sends text the user is
+        looking at. This one generates a reply and delivers it to a real
+        customer with a single press, so the two-line warning inside the button
+        is the entire safeguard: there is no confirmation step behind it.
       -->
       <button id="btn-followup" class="quick" type="button" disabled>
         <span class="bolt" aria-hidden="true">⚡</span>
@@ -513,18 +557,6 @@
           <small>Writes and sends in one step — you won't see it first</small>
         </span>
       </button>
-
-      <div id="followup-confirm" class="confirm hidden" role="alertdialog" aria-labelledby="fu-title">
-        <p id="fu-title" class="confirm-title">Send without showing you the message first?</p>
-        <p class="confirm-text">
-          The AI will read this conversation, write a reply and send it straight to
-          <b id="fu-recipient">this chat</b>. You will not get to read or edit it.
-        </p>
-        <div class="row">
-          <button id="btn-followup-cancel" class="ghost" type="button">Cancel</button>
-          <button id="btn-followup-go" class="danger" type="button">Generate &amp; Send</button>
-        </div>
-      </div>
     </main>
 
     <script src="../shared/constants.classic.js"></script>

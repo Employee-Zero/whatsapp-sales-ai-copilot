@@ -13,6 +13,22 @@
 
 ---
 
+## 0. Lean execution policy — highest priority for development tasks (2026-10-11)
+
+These rules govern how to execute work in this repository. They take priority over older instructions that could encourage extra testing, screenshots, or documentation. **Security and real-account protections in sections 2, 3 and 5 remain mandatory.**
+
+- **Scope:** Implement only what the user requested. No speculative features, broad refactors, CI expansions, new tooling, or parallel subagents unless essential for the requested deliverable.
+- **Smallest viable change:** Prefer the fewest files and simplest working implementation. Do not turn a minor feature into a documentation, screenshot, testing-framework, or architecture project.
+- **Documentation:** Do not create or rewrite README, CHANGELOG, SECURITY, PRIVACY, guides, architecture, test reports, AGENTS.md or other docs as a side effect of coding. Only edit docs when explicitly requested or when a specific release/security/privacy claim would otherwise be materially false; then make the shortest necessary correction. Leave polished user-facing copy to a separate task.
+- **Tests:** Run the minimum focused automated check once. If a real blocking failure appears, make a targeted fix and rerun only the affected check once. Report unresolved issues and stop; do not grow test suites or repeat full runs for reassurance. Extra release verification only when actually releasing or expressly requested.
+- **UI/screenshots:** No screenshot generation, viewport measurements, pixel-by-pixel reviews, repeated DOM probes, or cosmetic polishing unless explicitly requested or needed to fix a proven blocking defect.
+- **Real account:** Never conduct real ChatGPT OAuth login, spend plan allowance, send a real WhatsApp message, disrupt real Chrome profiles, or wait for user login. Hand real login and real-account end-to-end acceptance to the user.
+- **Stop condition:** Once the requested code/artifact exists and one focused check passes, or a genuine blocker is identified, stop immediately. Do not wait for manual acceptance or do unrelated improvements. Final report: brief status, changed files, checks actually run, blocker/manual next step. Prefer <=200 words.
+- **Publication:** No push, GitHub Release, Chrome Web Store submission, or version bump without explicit approval. Current planned extension version is 0.1.1.
+- **Current helper-installer scope:** **macOS only**, minimal double-click GUI installation with bundled runtime, background auto-start, and no Node/Terminal burden for users. **No Windows implementation, investigation, packaging, scripts or CI until the user asks.** Preserve existing code and report signing/notarization limitations; do not bypass system protections.
+
+---
+
 ## 1. This extension touches a real account, so the rules matter more than the code
 
 It reads the **WhatsApp Web session that is currently signed in**, and it sends
@@ -299,9 +315,11 @@ test. Three rules:
 
 1. **A test must never send a real message.** In particular it must never click
    the button that writes and sends without showing you the text first
-   (`#btn-followup-go`). That the confirmation is a separate step is the whole
-   point of it; a test that clicks through it defeats the only control standing
-   between a stray click and a customer.
+   (`#btn-followup`). That button now sends in one click — the confirmation that
+   used to stand behind it is gone — so an automated test must **never** click
+   it against a real customer. The two-line warning inside the button is the
+   only control left between a stray click and a customer, and a test that
+   clicks it has nothing standing behind it.
 2. **A test must never clear a whole `chrome.storage` store.** Those stores hold
    the user's own per-chat instructions and drafts, which are not the test's to
    destroy. Remove only what the test itself created, with the probe's

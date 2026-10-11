@@ -46,6 +46,7 @@ const el = {
   suChatgpt: $('su-chatgpt'),
   suApiKeyPane: $('su-apikey'),
   suCgStatus: $('su-cg-status'),
+  suCgWhy: $('su-cg-why'),
   suCgSignIn: $('su-cg-signin'),
   suCgSignOut: $('su-cg-signout'),
   suCgModel: $('su-cg-model'),
@@ -110,11 +111,6 @@ const el = {
   btnGenerate: $('btn-generate'),
   btnSend: $('btn-send'),
   btnFollowup: $('btn-followup'),
-
-  followupConfirm: $('followup-confirm'),
-  btnFollowupCancel: $('btn-followup-cancel'),
-  btnFollowupGo: $('btn-followup-go'),
-  fuRecipient: $('fu-recipient'),
 
   lengthSeg: $('length-seg'),
   lengthCount: $('length-count'),
@@ -460,11 +456,6 @@ function refreshSendButtons() {
   setBtn(el.btnSend, busy || !hasChat || !hasText);
   setBtn(el.btnFollowup, busy || !hasChat);
   setBtn(el.btnGenerate, busy || !hasChat);
-  setBtn(el.btnFollowupGo, busy || !hasChat);
-
-  // The confirmation belongs to one conversation. If that conversation is no
-  // longer the open one, the question it asks has stopped having an answer.
-  if (!hasChat) closeFollowupConfirm();
 
   // Only shown when something is genuinely wrong — never for routine state.
   if (current && !current.hasOpenChat) {
@@ -475,24 +466,6 @@ function refreshSendButtons() {
     el.blocked.classList.add('hidden');
     el.blockedDetail.textContent = '';
   }
-}
-
-/**
- * Show the "this sends without a preview" confirmation.
- *
- * Names the recipient, because the mistake this step exists to prevent is
- * sending to the wrong customer.
- */
-function openFollowupConfirm() {
-  const who = (current && (current.contactName || formatPhoneDisplay(current.phone))) || '';
-  el.fuRecipient.textContent = who ? `this chat (${who})` : 'the open chat';
-  el.followupConfirm.classList.remove('hidden');
-  el.btnFollowupGo.focus();
-}
-
-/** Hide the confirmation without doing anything. */
-function closeFollowupConfirm() {
-  el.followupConfirm.classList.add('hidden');
 }
 
 /**
@@ -592,9 +565,6 @@ async function syncPanesToChat(ctx) {
   await flushInstruction();
   await saveDraft(currentChatId, el.reply.value, draftState);
   currentChatId = id;
-
-  // A pending "send without preview?" question was about the previous customer.
-  closeFollowupConfirm();
 
   const store = await loadDrafts();
   const draft = store[id];
@@ -835,7 +805,7 @@ async function onSetupTest() {
 
 /** The two panes that show ChatGPT state — first-run and Settings. */
 const CG_PANES = [
-  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, cmd: el.suCgCmd },
+  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, cmd: el.suCgCmd, why: el.suCgWhy },
   { status: el.cfgCgStatus, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, cmd: el.cfgCgCmd },
 ];
 
@@ -1051,6 +1021,11 @@ function renderChatGptPanes({ resetModels = false } = {}) {
     pane.signOut.classList.toggle('hidden', !(s && s.signedIn));
 
     if (pane.cmd) pane.cmd.textContent = command;
+
+    // The "why a Helper" explanation is for someone who has not connected yet.
+    // Once the account is connected it collapses to a single line, and the
+    // expandable "Why the Helper?" below it stays for anyone who wants it back.
+    if (pane.why) pane.why.classList.toggle('hidden', connected);
 
     fillModelSelect(pane.model, resetModels ? (cfg && cfg.chatgptModel) || '' : '', { reset: resetModels });
     if (pane.modelHint) pane.modelHint.textContent = modelHintText(s);
@@ -1946,16 +1921,11 @@ el.btnSaveConfig.addEventListener('click', onSaveConfig);
 el.btnClearKey.addEventListener('click', onClearKey);
 el.btnTest.addEventListener('click', onTestConnection);
 
-// Follow-up & Send is two clicks by design: the first one asks, the second one
-// commits. Nothing else in the panel sends a message the user has not read.
-el.btnFollowup.addEventListener('click', () => {
-  if (current && current.hasOpenChat) openFollowupConfirm();
-});
-el.btnFollowupCancel.addEventListener('click', closeFollowupConfirm);
-el.btnFollowupGo.addEventListener('click', () => {
-  closeFollowupConfirm();
-  onFollowUpAndSend();
-});
+// Follow-up & Send is one click by design: it generates and sends without ever
+// showing the user the text. The two-line warning inside the button is therefore
+// the whole safeguard, and nothing else in the panel sends a message the user
+// has not read.
+el.btnFollowup.addEventListener('click', onFollowUpAndSend);
 
 // First-run form. Both buttons act on what is typed, not on what is stored, so
 // a configuration can be checked before it is committed.

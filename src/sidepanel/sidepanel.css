@@ -591,8 +591,10 @@ body {
   flex: 1 1 0;
 }
 
-/* The two connection methods. Full width and equal, like the settings tabs —
-   neither is the "real" way to connect, so neither gets the wider half. */
+/* The two connection methods. Full width and equal, in the order they are
+   offered: the API key on the left, the ChatGPT subscription on the right. The
+   API key is the one marked Recommended for now, so its button carries a small
+   second line for that word and the two buttons stay the same height. */
 .seg.modes {
   display: flex;
   width: 100%;
@@ -600,7 +602,23 @@ body {
 
 .seg.modes .seg-btn {
   flex: 1 1 0;
-  padding: 0 8px;
+  height: auto;
+  min-height: 34px;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1.25;
+}
+
+.seg-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 /* The length row: control on the left, live word count on the right. */
@@ -610,6 +628,25 @@ body {
   justify-content: space-between;
   gap: 8px;
   margin-top: -2px;
+}
+
+/* The length control lines up with the Generate Reply button below it: same
+   width as the left-hand half of that row (the row is `100%` wide with a 10px
+   gap between its two equal halves), so the two read as one column and the
+   three options sit directly above the button they affect. The labels step down
+   to 11px, local to this control, so the three of them fit inside that width. */
+.length-row .seg {
+  flex: none;
+  width: calc(50% - 5px);
+}
+
+.length-row .seg-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .length-row .count {
@@ -740,7 +777,9 @@ button.primary.busy::after {
 }
 
 /* Full-width secondary action: generate + write + send, no preview. Tinted
-   rather than outlined so it reads as a shortcut, not a third equal choice. */
+   rather than outlined so it reads as a shortcut, not a third equal choice —
+   green-tinted, because it is still an AI action, just a greener one than the
+   Send button it sits under. */
 button.quick {
   width: 100%;
   height: auto;
@@ -750,14 +789,14 @@ button.quick {
   align-items: center;
   justify-content: flex-start;
   text-align: left;
-  background: var(--accent-soft);
-  border: 1px solid transparent;
+  background: #dff3ec;
+  border: 1px solid #bfe7d9;
   border-radius: 10px;
   color: var(--accent-dark);
 }
 
 button.quick:hover:not(:disabled) {
-  background: #d9efe9;
+  background: #d0ebdf;
 }
 
 button.quick:disabled {
@@ -1178,6 +1217,31 @@ button.quick .txt small {
   color: var(--danger);
 }
 
+/* The short "why a Helper" note above the ChatGPT buttons. It is the one piece
+   of that pane that has to be read before connecting, so it gets a card of its
+   own rather than another grey status line — and it is hidden once the account
+   is connected, because by then the question is answered. */
+.why {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+}
+
+.why-title {
+  margin: 0 0 3px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.why-body {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 /* The helper start command: monospace, selectable, and wrapping rather than
    scrolling — it is meant to be copied into a terminal. */
 .conn-cmd {
@@ -1240,6 +1304,10 @@ button.quick .txt small {
   border-radius: 3px;
 }
 
+.help-body a {
+  color: var(--accent-dark);
+}
+
 /* The short "what to click next" list shown once, after connecting. */
 .qs-list {
   list-style: none;
@@ -1271,45 +1339,4 @@ button.quick .txt small {
   color: var(--muted);
   font-size: 11.5px;
   line-height: 1.45;
-}
-
-/* --------------------------------------------------------------------------
-   The one confirmation in the panel
-
-   Follow-up & Send is the only control that can put a message the user has
-   never read in front of a real customer, so it is the only one that asks
-   twice. Danger-coloured, because the safe answer is the other button.
-   -------------------------------------------------------------------------- */
-
-.confirm {
-  background: var(--danger-soft);
-  border: 1px solid var(--danger-border);
-  border-radius: var(--radius);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.confirm-title {
-  margin: 0;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--danger);
-}
-
-.confirm-text {
-  margin: 0;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--text);
-}
-
-.confirm-text b {
-  font-weight: 650;
-}
-
-.confirm .row button {
-  height: 34px;
-  font-size: 12.5px;
 }
