@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The background helper, as launchd sees it.
+
+  Installed into /Library/LaunchAgents, not ~/Library/LaunchAgents: an agent in
+  the system-wide directory is loaded into *every* user's session and runs as
+  that user, which is what makes one install work for whoever is at the keyboard
+  without the installer having to write into anybody's home directory. The
+  credential therefore lands in the logged-in user's own ~/.config, owned by
+  them, exactly as it does when the helper is started from a terminal.
+
+  Note the absence of UserName: this job is never launched as root. launchd
+  starts it in the session that owns the plist — the person at the keyboard —
+  which is what the credential's permissions depend on.
+
+  RunAtLoad is the "starts again after a reboot" half: launchd loads this file at
+  login and starts the job because of it. KeepAlive/SuccessfulExit is the other
+  half — a crash is restarted, but a clean exit is not, so the process can be
+  stopped deliberately (see the uninstall package) without launchd fighting it
+  back to life.
+
+  LimitLoadToSessionType keeps the job out of ssh and background sessions, where
+  $HOME may be a different directory and a second copy would fight this one for
+  the port.
+
+  __PREFIX__ is substituted at build time by tools/helper-installer/build-macos-pkg.sh.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.employeezero.whatsapp-sales-ai-copilot.helper</string>
+
+	<!-- A shell script rather than node directly: it is what lets the log land
+	     in the logged-in user's own home. See payload/bin/run-helper.sh.in. -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>__PREFIX__/bin/run-helper.sh</string>
+	</array>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+
+	<!-- Together with ProcessType this keeps the helper off the interactive
+	     priority band: it is idle almost all of the time. -->
+	<key>ProcessType</key>
+	<string>Background</string>
+
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+
+	<!-- 0077 as octal: anything this job creates is owner-only from the moment
+	     it exists. The credential file sets its own modes as well; this is the
+	     second lock on the same door. -->
+	<key>Umask</key>
+	<integer>63</integer>
+
+	<key>WorkingDirectory</key>
+	<string>__PREFIX__</string>
+</dict>
+</plist>

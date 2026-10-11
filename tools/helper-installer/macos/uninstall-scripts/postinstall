@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# The uninstall half, as its own package.
+#
+# Same reasoning as the installer: the people this is for do not open a terminal.
+# Removing a background program properly means unloading it from launchd, which
+# is a privileged operation with no graphical equivalent — Activity Monitor can
+# kill the process but cannot stop it coming back or delete the agent that starts
+# it. A second double-clickable package is the smallest honest answer.
+#
+# Order matters: stop the process, revoke the sign-in while the program that owns
+# it is still on disk, then remove both.
+
+PREFIX="/usr/local/lib/whatsapp-sales-ai-copilot"
+LABEL="com.employeezero.whatsapp-sales-ai-copilot.helper"
+PLIST="/Library/LaunchAgents/${LABEL}.plist"
+
+CONSOLE_USER="$(/usr/bin/stat -f%Su /dev/console 2>/dev/null)"
+case "$CONSOLE_USER" in
+	"" | root | loginwindow) CONSOLE_USER="" ;;
+esac
+
+CONSOLE_UID=""
+[ -n "$CONSOLE_USER" ] && CONSOLE_UID="$(/usr/bin/id -u "$CONSOLE_USER" 2>/dev/null)"
+
+# ---------------------------------------------------------------------------
+# 1. Stop it, and stop it coming back
+# ---------------------------------------------------------------------------
+if [ -n "$CONSOLE_UID" ]; then
+	/bin/launchctl asuser "$CONSOLE_UID" /bin/launchctl bootout "gui/${CONSOLE_UID}/${LABEL}" 2>/dev/null
+fi
+/bin/launchctl bootout "system/${LABEL}" 2>/dev/null
+/bin/rm -f "$PLIST"
+
+# ---------------------------------------------------------------------------
+# 2. Revoke, while there is still something to revoke with
+# ---------------------------------------------------------------------------
+#
+# `--sign-out` asks OpenAI to invalidate the session and clears the stored
+# tokens; it is the same call the extension's Sign out button makes. It needs the
+# network and the user's own home directory, so it runs as that user and its
+# failure is not fatal — an offline machine still gets uninstalled, it just keeps
+# a credential that will expire on its own (30 days) instead of being revoked.
+if [ -n "$CONSOLE_USER" ] && [ -x "$PREFIX/runtime/bin/node" ]; then
+	/usr/bin/sudo -u "$CONSOLE_USER" -H "$PREFIX/runtime/bin/node" "$PREFIX/helper/siwc-helper.js" --sign-out >/dev/null 2>&1
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Remove the payload
+# ---------------------------------------------------------------------------
+#
+# The helper's own files under ~/.config and ~/Library/Logs are left alone: they
+# are the user's, they hold no live token after step 2, and a reinstall finds the
+# registration there instead of registering this machine with OpenAI again.
+/bin/rm -rf "$PREFIX"
+
+# The package receipts go too, so the Installer does not offer to "upgrade" a
+# program that is no longer installed.
+/usr/sbin/pkgutil --forget com.employeezero.whatsapp-sales-ai-copilot.helper 2>/dev/null
+
+exit 0

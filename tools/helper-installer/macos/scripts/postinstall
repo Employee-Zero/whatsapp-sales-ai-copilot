@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# Runs as root, from the macOS Installer, once the payload has landed.
+#
+# Three jobs, in order: make the installed files owned by the system rather than
+# by whoever built the package, make sure the runtime can actually be executed,
+# and start the helper in the session of the person who is sitting at the
+# computer. Nothing here needs a terminal, and nothing here needs the user to do
+# anything after the installer window closes.
+#
+# What this script deliberately does NOT do: start a ChatGPT sign-in. No OAuth
+# request, no browser, no consent screen. Installation puts a program on the
+# disk and starts it; the person using the extension is the one who clicks
+# "Continue with ChatGPT", in their own browser, on their own account. An
+# installer that opened a login page would be an installer asking for account
+# access it was never given.
+#
+# This script must never fail the install. `set -e` is deliberately absent: a
+# package that installs its files and then reports "the installation failed"
+# because it could not reach a logged-in session is worse than one that installs
+# quietly and starts at the next login.
+
+PREFIX="/usr/local/lib/whatsapp-sales-ai-copilot"
+LABEL="com.employeezero.whatsapp-sales-ai-copilot.helper"
+PLIST="/Library/LaunchAgents/${LABEL}.plist"
+
+# ---------------------------------------------------------------------------
+# 1. Ownership
+# ---------------------------------------------------------------------------
+#
+# pkgbuild records the ownership the payload had on the build machine. Built by a
+# developer, that is a normal user's uid — which would install a runtime and a
+# LaunchAgent owned by uid 501 on a machine where uid 501 may be somebody else
+# entirely, or nobody. One chown removes the whole class of problem, and it is
+# also what makes the installation read-only to unprivileged processes.
+[ -d "$PREFIX" ] && /usr/bin/chown -R root:wheel "$PREFIX" 2>/dev/null
+[ -f "$PLIST" ] && /usr/bin/chown root:wheel "$PLIST" 2>/dev/null
+[ -f "$PLIST" ] && /bin/chmod 644 "$PLIST" 2>/dev/null
+[ -d "$PREFIX" ] && /bin/chmod -R go-w "$PREFIX" 2>/dev/null
+[ -f "$PREFIX/runtime/bin/node" ] && /bin/chmod 755 "$PREFIX/runtime/bin/node" 2>/dev/null
+[ -f "$PREFIX/bin/run-helper.sh" ] && /bin/chmod 755 "$PREFIX/bin/run-helper.sh" 2>/dev/null
+
+# ---------------------------------------------------------------------------
+# 2. Start it now, in the session that is actually logged in
+# ---------------------------------------------------------------------------
+#
+# /Library/LaunchAgents is loaded at login. Someone who installs this while
+# already logged in should not have to log out and back in to use it, so the job
+# is bootstrapped into the current console session here. If there is no console
+# session — an SSH install, a machine at the login window, a CI runner — the file
+# is already in place and the next login picks it up.
+
+CONSOLE_USER="$(/usr/bin/stat -f%Su /dev/console 2>/dev/null)"
+case "$CONSOLE_USER" in
+	"" | root | loginwindow) CONSOLE_USER="" ;;
+esac
+
+if [ -n "$CONSOLE_USER" ]; then
+	CONSOLE_UID="$(/usr/bin/id -u "$CONSOLE_USER" 2>/dev/null)"
+else
+	CONSOLE_UID=""
+fi
+
+if [ -n "$CONSOLE_UID" ]; then
+	# bootout first: reinstalling over a running copy would otherwise fail with
+	# "service already loaded" and leave the old process serving the old code.
+	/bin/launchctl asuser "$CONSOLE_UID" /bin/launchctl bootout "gui/${CONSOLE_UID}/${LABEL}" 2>/dev/null
+	if ! /bin/launchctl asuser "$CONSOLE_UID" /bin/launchctl bootstrap "gui/${CONSOLE_UID}" "$PLIST" 2>/dev/null; then
+		# bootstrap arrived in 10.10; the older spelling is kept for machines
+		# that predate it rather than leaving them with a silent no-op.
+		/bin/launchctl asuser "$CONSOLE_UID" /bin/launchctl load -w "$PLIST" 2>/dev/null
+	fi
+fi
+
+exit 0
