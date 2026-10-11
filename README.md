@@ -4,17 +4,19 @@
 
 An open-source Chrome extension that helps salespeople understand past WhatsApp conversations and generate relevant replies and follow-ups — without copying and pasting.
 
-**[Download Extension](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)** · **[Installation Guide](docs/GETTING_STARTED.md)**
+## Use your ChatGPT Plus or Pro subscription — no API key required
 
-<table>
-<tr>
-<td align="center"><a href="docs/assets/04-generated-draft.png"><img src="docs/assets/04-generated-draft.png" alt="AI-generated sales reply (demo conversation)" width="210"></a><br><sub>AI Replies</sub></td>
-<td align="center"><a href="docs/assets/05-per-chat-instruction.png"><img src="docs/assets/05-per-chat-instruction.png" alt="Custom instruction for a customer (demo)" width="210"></a><br><sub>Custom Instructions</sub></td>
-<td align="center"><a href="docs/assets/06-followup-confirmation.png"><img src="docs/assets/06-followup-confirmation.png" alt="Follow-up send confirmation (demo)" width="210"></a><br><sub>Follow-ups</sub></td>
-</tr>
-</table>
+**Free and open source.** Connect the ChatGPT Plus or Pro plan you already pay for, or use your own API key. Two ways to connect, one extension:
 
-*Real extension screenshots with fictional conversations. Click an image to enlarge.*
+- **ChatGPT (recommended)** — sign in with your ChatGPT Plus or Pro subscription. No API key needed. This needs **ChatGPT Connector**, a small free macOS app made by Employee Zero (Apple Silicon Macs only), which handles the sign-in on your own computer.
+- **API Key** — works on its own, on any computer Chrome runs on, with any OpenAI-compatible provider. No Connector, no ChatGPT subscription.
+- **Optional backup:** if you use ChatGPT, you can turn on *Use API Key as backup* (off by default). Then, only when ChatGPT is out of allowance or temporarily unavailable, your API provider answers instead.
+
+**[Download the Chrome extension](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)** (required) · **[Installation Guide](docs/GETTING_STARTED.md)** · ChatGPT Connector (macOS, only for ChatGPT) is the second download on the same release page.
+
+<a href="docs/assets/04-generated-draft.png"><img src="docs/assets/04-generated-draft.png" alt="AI-generated sales reply (demo conversation)" width="260"></a>
+
+*Screenshot with a fictional conversation, from an earlier build — some labels have since changed.*
 
 ## Why We Built This
 
@@ -34,7 +36,7 @@ Capture messages from your current WhatsApp Web conversation. Need more history?
 
 **2. Customize AI for Your Business**
 
-Set your own AI prompt to match your industry, products, and sales style. Add specific instructions for individual customers.
+Set your own AI prompt to match your industry, products, and sales style. Add a one-off tip for a specific message.
 
 **3. Generate Better Replies and Follow-ups**
 
@@ -42,64 +44,31 @@ Create natural, context-aware replies based on your conversations. Choose the le
 
 **Less reading. Less copying. More selling.**
 
-## Two Ways to Connect Your AI
-
-Pick whichever suits you. You can switch later without losing the other one's settings, your per-chat instructions, or your drafts.
-
-<table>
-<tr>
-<td align="center" width="50%"><a href="docs/assets/08-chatgpt-helper-off.png"><img src="docs/assets/08-chatgpt-helper-off.png" alt="Connect with a ChatGPT subscription" width="230"></a><br><sub><b>ChatGPT subscription</b></sub></td>
-<td align="center" width="50%"><a href="docs/assets/01-first-run-setup.png"><img src="docs/assets/01-first-run-setup.png" alt="Connect with your own API key" width="230"></a><br><sub><b>Your own API key</b></sub></td>
-</tr>
-</table>
-
-### Sign in with ChatGPT
-
-Use the ChatGPT plan you already pay for. You sign in to OpenAI in a normal browser tab, and this extension writes replies with the models your account can use.
-
-**This method needs one extra step.** OpenAI's sign-in for open-source apps only accepts a callback to `127.0.0.1`, which a browser extension cannot provide. So Employee Zero ships **ChatGPT Connector for Sales AI Copilot**, a small background app for Apple Silicon Macs. It is made by Employee Zero and is not an OpenAI product. It completes the sign-in and is the only thing that holds your credential; the extension never sees a token.
-
-In the extension, choose **ChatGPT** and follow the three steps (requires ChatGPT Plus or Pro):
-
-1. **Install ChatGPT Connector** — click **Download for Mac** and open the `.pkg`. It is not signed with an Apple Developer ID or notarized, so macOS may ask you to allow it in System Settings › Privacy & Security.
-2. **Allow Local Access** — lets Chrome reach the Connector on `127.0.0.1`.
-3. **Connect with ChatGPT** — sign in to OpenAI in a normal browser tab, then pick a model.
-
-Direct download: [ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest/download/ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg). Signing out from the extension revokes the credential and deletes it. Developers can still run the source with `node helper/siwc-helper.js` (Node.js 20+); see [helper/README.md](helper/README.md).
-
-Two honest caveats. **Whether your plan is eligible is OpenAI's decision, not ours** — if your account cannot be used this way, the extension says so and the API-key method still works. And a plan is not unlimited: replies draw on the same allowance you use in ChatGPT itself, so heavy use will hit it.
-
-### Your own API key
-
-Connect any OpenAI-compatible provider: the Base URL of its `POST /chat/completions` endpoint, your API key, and the model name. Nothing to install, and you control which provider sees your conversations.
-
 ## Get Started
 
-1. **Download** the latest release and unzip the extension ZIP. For the ChatGPT method you also install the Connector `.pkg` (the extension links to it).
-2. **Install** the extension in Chrome: `chrome://extensions` → Developer mode → Load unpacked.
-3. **Connect your AI**: sign in with ChatGPT, or enter your own API Base URL, API Key, and Model ID.
-4. **Start replying** — open a WhatsApp conversation, generate a reply, review, and send.
+1. **Download the Chrome extension** (the ZIP named `…Chrome-Extension…`) from the [latest release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest), unzip it, and install it: `chrome://extensions` → Developer mode → Load unpacked.
+2. **Open the extension on WhatsApp Web** and choose how to connect:
+   - **ChatGPT** — follow the three steps in the panel: *Install ChatGPT Connector* → *Allow Local Access* → *Continue with ChatGPT*. Requires ChatGPT Plus or Pro and a Mac with Apple silicon.
+   - **API Key** — enter your API Base URL, API Key and Model ID. Nothing else to install.
+3. **Generate a reply**, review or edit it, then send.
 
-**[Step-by-Step Installation Guide →](docs/GETTING_STARTED.md)**
+Step-by-step with the macOS security prompt explained: **[Installation Guide](docs/GETTING_STARTED.md)**.
 
-## AI Setup & Cost
+## Cost
 
-**The extension is free and open source. AI replies require either your own API key or an eligible ChatGPT plan.**
+**The extension is free and open source.**
 
-- **With your own API key**, your provider charges you for usage at its own rates.
-- **With a ChatGPT plan**, replies count against your plan's allowance instead. This project cannot tell you whether your particular plan is eligible, what it costs, or how much allowance you have — only OpenAI can, and the sign-in is where you find out.
-
-New to AI APIs? Our [Installation Guide](docs/GETTING_STARTED.md#option-b--use-your-own-api-key) explains how to get a key and set everything up.
-
-*Note: these are two separate things. A ChatGPT subscription is not API credit, and an API key does not draw on your subscription.*
+- **ChatGPT:** replies use your ChatGPT plan's allowance. Whether your plan can be used this way is decided by OpenAI when you sign in — this project cannot promise it.
+- **API Key:** your provider charges you at its own rates.
+- **They are separate.** A ChatGPT subscription is not API credit, and having a ChatGPT subscription does not make a third-party API free (or the other way round).
 
 ## Good to Know
 
-- Chat messages are sent to the AI provider you chose when you generate a reply — your API provider, or OpenAI if you connected a ChatGPT plan.
-- If you use the ChatGPT subscription method, your sign-in credential is stored by the local helper on your own computer, in a file only your user account can read. It is never put in browser storage, never logged, and never sent to WhatsApp.
+- Chat messages are sent to the AI provider you chose when you generate a reply — OpenAI if you use ChatGPT, or your API provider with an API Key. If you turn on the API Key backup, a reply can go to your API provider when ChatGPT is unavailable.
+- With ChatGPT, your sign-in is held by ChatGPT Connector on your own Mac, in a file only your user account can read — never in browser storage, never logged, never sent to WhatsApp.
 - Only messages currently loaded in WhatsApp Web are available to the extension.
 - No CRM integration, bulk messaging, or scheduled follow-ups.
-- This is an independent open-source project, not affiliated with WhatsApp, Meta, or OpenAI.
+- This is an independent open-source project, not affiliated with WhatsApp, Meta, or OpenAI. ChatGPT Connector is made by Employee Zero and is not an OpenAI product. Its macOS installer is not signed with an Apple Developer ID or notarized; the guide shows how to open it safely.
 
 [Privacy](PRIVACY.md) · [Security](SECURITY.md) · [For Developers](docs/DEVELOPMENT.md) · [Report an Issue](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/issues) · [MIT License](LICENSE)
 

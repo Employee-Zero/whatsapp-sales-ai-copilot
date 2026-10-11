@@ -1574,3 +1574,21 @@ a.btn-link.primary:hover {
 .backup-warn {
   color: var(--warn);
 }
+
+/* "macOS blocked the installer?" — collapsed by default. */
+.cg-help {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.cg-help summary {
+  cursor: pointer;
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.cg-help ol {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}

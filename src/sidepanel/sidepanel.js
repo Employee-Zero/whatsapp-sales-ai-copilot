@@ -48,6 +48,7 @@ const el = {
   suCgDownload: $('su-cg-download'),
   suCgRecheck: $('su-cg-recheck'),
   suCgFallback: $('su-cg-fallback'),
+  suCgBlocked: $('su-cg-blocked'),
   suCgRelease: $('su-cg-release'),
   cfgCgB1: $('cfg-cg-b1'),
   cfgCgB2: $('cfg-cg-b2'),
@@ -56,6 +57,7 @@ const el = {
   cfgCgDownload: $('cfg-cg-download'),
   cfgCgRecheck: $('cfg-cg-recheck'),
   cfgCgFallback: $('cfg-cg-fallback'),
+  cfgCgBlocked: $('cfg-cg-blocked'),
   cfgCgRelease: $('cfg-cg-release'),
   suCgAllow: $('su-cg-allow'),
   cfgCgAllow: $('cfg-cg-allow'),
@@ -853,8 +855,8 @@ async function onSetupTest() {
 
 /** The two panes that show ChatGPT state — first-run and Settings. */
 const CG_PANES = [
-  { b1: el.suCgB1, b2: el.suCgB2, b3: el.suCgB3, a1: el.suCgA1, fallback: el.suCgFallback, recheck: el.suCgRecheck, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, allow: el.suCgAllow, refresh: el.suCgRefresh, save: el.suCgSave },
-  { b1: el.cfgCgB1, b2: el.cfgCgB2, b3: el.cfgCgB3, a1: el.cfgCgA1, fallback: el.cfgCgFallback, recheck: el.cfgCgRecheck, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, allow: el.cfgCgAllow, refresh: el.cfgCgRefresh, test: el.cfgCgTest },
+  { b1: el.suCgB1, b2: el.suCgB2, b3: el.suCgB3, a1: el.suCgA1, blocked: el.suCgBlocked, fallback: el.suCgFallback, recheck: el.suCgRecheck, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, allow: el.suCgAllow, refresh: el.suCgRefresh, save: el.suCgSave },
+  { b1: el.cfgCgB1, b2: el.cfgCgB2, b3: el.cfgCgB3, a1: el.cfgCgA1, blocked: el.cfgCgBlocked, fallback: el.cfgCgFallback, recheck: el.cfgCgRecheck, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, allow: el.cfgCgAllow, refresh: el.cfgCgRefresh, test: el.cfgCgTest },
 ];
 
 /** Fill one step badge: a small coloured pill at the end of the step's title row. */
@@ -952,7 +954,7 @@ function setMode(mode, { save = false } = {}) {
   el.cfgChatgpt.classList.toggle('hidden', !isCg);
   // ChatGPT is the primary route. In that mode the API Key fields are only a
   // backup: they show when the user turns the backup on, and the opt-in itself
-  // is offered only there. In "API Key only" the fields are the whole setup.
+  // is offered only there. In "API Key" mode the fields are the whole setup.
   const backupOn = isCg && el.cfgApiFallback.checked;
   el.cfgBackupRow.classList.toggle('hidden', !isCg);
   el.cfgApiKeyPane.classList.toggle('hidden', isCg && !backupOn);
@@ -1145,6 +1147,7 @@ function renderChatGptPanes({ resetModels = false } = {}) {
     else setBadge(pane.b1, 'Not installed', 'is-warn', 'Not detected — it is not installed, or not running.');
     pane.a1.classList.toggle('hidden', helperUp);
     pane.fallback.classList.toggle('hidden', helperUp);
+    pane.blocked.classList.toggle('hidden', helperUp);
 
     // Step 2 — Chrome's permission for 127.0.0.1.
     if (allowed) setBadge(pane.b2, '✓ Allowed', 'is-ok');

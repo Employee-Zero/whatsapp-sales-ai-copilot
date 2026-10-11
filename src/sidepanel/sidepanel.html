@@ -65,7 +65,7 @@
 
         <div id="su-modes" class="seg modes" role="group" aria-label="How to connect">
           <button class="seg-btn" type="button" data-mode="chatgpt"><span class="seg-label">ChatGPT</span></button>
-          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key only</span></button>
+          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key</span></button>
         </div>
         <p id="su-mode-hint" class="hint"></p>
 
@@ -94,6 +94,14 @@
                 <a id="su-cg-download" class="btn-link primary" href="#" target="_blank" rel="noopener">Download for Mac</a>
                 <button id="su-cg-recheck" class="ghost" type="button">Recheck</button>
               </div>
+              <details id="su-cg-blocked" class="cg-help">
+                <summary>macOS blocked the installer? How to open it</summary>
+                <ol>
+                  <li>Double-click the <code>.pkg</code>. If macOS says it can't be opened, click <b>Done</b>.</li>
+                  <li>Open <b>System Settings → Privacy &amp; Security</b>, scroll to <b>Security</b> and click <b>Open Anyway</b> next to the installer, then confirm.</li>
+                  <li>Open the installer again and continue. Only use the file from Employee Zero's GitHub Release.</li>
+                </ol>
+              </details>
               <p id="su-cg-fallback" class="cg-fallback"><a id="su-cg-release" href="#" target="_blank" rel="noopener">Download from GitHub</a></p>
             </div>
 
@@ -227,7 +235,7 @@
         <div class="conn-head">AI Connection</div>
         <div id="cfg-modes" class="seg modes" role="group" aria-label="AI Connection">
           <button class="seg-btn" type="button" data-mode="chatgpt"><span class="seg-label">ChatGPT</span></button>
-          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key only</span></button>
+          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key</span></button>
         </div>
         <p id="cfg-mode-hint" class="hint"></p>
 
@@ -243,6 +251,14 @@
                 <a id="cfg-cg-download" class="btn-link primary" href="#" target="_blank" rel="noopener">Download for Mac</a>
                 <button id="cfg-cg-recheck" class="ghost" type="button">Recheck</button>
               </div>
+              <details id="cfg-cg-blocked" class="cg-help">
+                <summary>macOS blocked the installer? How to open it</summary>
+                <ol>
+                  <li>Double-click the <code>.pkg</code>. If macOS says it can't be opened, click <b>Done</b>.</li>
+                  <li>Open <b>System Settings → Privacy &amp; Security</b>, scroll to <b>Security</b> and click <b>Open Anyway</b> next to the installer, then confirm.</li>
+                  <li>Open the installer again and continue. Only use the file from Employee Zero's GitHub Release.</li>
+                </ol>
+              </details>
               <p id="cfg-cg-fallback" class="cg-fallback"><a id="cfg-cg-release" href="#" target="_blank" rel="noopener">Download from GitHub</a></p>
             </div>
 
@@ -336,13 +352,13 @@
         <div class="conn-head">Conversation Context Character Limit</div>
         <input id="cfg-maxChars" type="number" step="1000" min="1000" max="100000" aria-label="Conversation Context Character Limit" />
 
-        <!-- 5. Thinking Depth (API Key only) -->
+        <!-- 5. Thinking Depth (API Key mode) -->
         <div id="cfg-thinking-wrap">
           <div class="conn-head">Thinking Depth</div>
           <select id="cfg-thinking" aria-label="Thinking Depth"></select>
         </div>
 
-        <!-- 6. Advanced Settings (API Key only) -->
+        <!-- 6. Advanced Settings (API Key mode) -->
         <details id="cfg-adv-api" class="help">
           <summary>Advanced Settings</summary>
           <div class="help-body">

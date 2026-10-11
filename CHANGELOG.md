@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [0.1.3] - 2026-10-12
+
+### Added
+
+- **"macOS blocked the installer? How to open it"** — a collapsed help link beside *Download for Mac* explaining System Settings › Privacy & Security › Open Anyway. No instruction ever asks you to turn protection off.
+- Installation guide rewritten for v0.1.3: ChatGPT Plus/Pro first, API Key as an independent alternative, the opt-in API Key backup, and the Apple security prompt.
+- Release assets are named so the order is obvious: `01-REQUIRED-…Chrome-Extension…zip`, then `02-OPTIONAL-ChatGPT-Connector…pkg`.
+
+### Changed
+
+- README, Getting Started, Privacy and Security now describe the ChatGPT route, ChatGPT Connector and the API Key backup accurately; outdated screenshots were removed.
+- The API Key mode is labelled simply **API Key**.
+
 ## [0.1.2] - 2026-10-12
 
 ### Added

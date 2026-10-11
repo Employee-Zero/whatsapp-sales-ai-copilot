@@ -2,31 +2,20 @@
 
 Install **WhatsApp Sales AI Copilot** in four steps. No coding required.
 
-**You'll need:** Google Chrome, WhatsApp Web, and one way to reach an AI —
-either an API key from a provider, or a ChatGPT plan plus Node.js for the local
-helper. Step 3 covers both.
+**You'll need:** Google Chrome, WhatsApp Web, and **one** way to reach an AI:
 
-## Step 1 — Download
+- **ChatGPT Plus or Pro** (easiest) — needs a Mac with Apple silicon, because it uses the free **ChatGPT Connector** app. *Or*
+- **an API key** from an AI provider — works on any computer, nothing extra to install.
+
+## Step 1 — Download the Chrome extension
 
 1. Open the **[latest release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)**.
-2. Under **Assets**, download the extension ZIP file. That is
-   `whatsapp-sales-ai-copilot-<version>.zip`. Do **not** download the files
-   labeled "Source code".
-3. Unzip the file and keep the extracted folder somewhere permanent, such as Documents.
+2. Under **Assets**, download the file named **`01-REQUIRED-…Chrome-Extension-…zip`**. This is the main program and **everyone needs it first**.
+3. Unzip it and keep the folder somewhere permanent, such as Documents.
 
-*You do not need a GitHub account to download the extension.*
+Do **not** download the files labeled "Source code". The file starting with `02-OPTIONAL-` is ChatGPT Connector — you will get it later, from inside the extension, and only if you choose ChatGPT.
 
-**Only if you plan to use the ChatGPT subscription method**, also download
-`whatsapp-sales-ai-copilot-helper-<version>.zip` and unzip it **into the same
-place as the extension folder**, so the two sit side by side:
-
-```
-whatsapp-sales-ai-copilot-0.2.0/       <- the extension folder
-helper/                                <- the helper, from the second ZIP
-```
-
-If you are going to use your own API key, skip the second ZIP. You do not need
-it and nothing will ask for it.
+*You do not need a GitHub account to download.*
 
 ## Step 2 — Install in Chrome
 
@@ -37,160 +26,93 @@ it and nothing will ask for it.
 
 <a href="assets/00-chrome-extensions.png"><img src="assets/00-chrome-extensions.png" alt="Chrome Extensions page in English: enable Developer mode, then click Load unpacked" width="780"></a>
 
-The extension is now installed. You can pin its icon to the Chrome toolbar for easy access.
+You can pin the extension's icon to the Chrome toolbar for easy access.
 
-## Step 3 — Connect Your AI
+## Step 3 — Connect your AI
 
-Open [WhatsApp Web](https://web.whatsapp.com), then click the extension icon.
-You will see two ways to connect. Pick one — you can switch later, and switching
-does not lose the other one's settings or your drafts.
+Open [WhatsApp Web](https://web.whatsapp.com) and click the extension icon. Choose **ChatGPT** or **API Key**. You can switch later; each keeps its own settings.
 
-<table>
-<tr>
-<td align="center"><a href="assets/08-chatgpt-helper-off.png"><img src="assets/08-chatgpt-helper-off.png" alt="The first-run screen with ChatGPT subscription selected" width="195"></a><br><sub>ChatGPT subscription</sub></td>
-<td align="center"><a href="assets/01-first-run-setup.png"><img src="assets/01-first-run-setup.png" alt="The first-run screen with Your own API key selected" width="195"></a><br><sub>Your own API key</sub></td>
-</tr>
-</table>
+### Option A — ChatGPT (easiest, for Plus or Pro on a Mac with Apple silicon)
 
-### Option A — Sign in with ChatGPT
+Uses the ChatGPT plan you already pay for — **no API key needed**. In the extension choose **ChatGPT**; it shows three steps:
 
-Use the ChatGPT plan you already pay for.
+1. **Install ChatGPT Connector.** Click **Download for Mac** and open the downloaded `.pkg`. It is a small background app made by Employee Zero (not by OpenAI). It handles your ChatGPT sign-in on your own Mac. When it is running, the step shows **✓ Ready**; use **Recheck** if it does not update.
+2. **Allow Local Access.** Click **Allow Access** and accept Chrome's prompt. This only lets the extension talk to the Connector on your own computer.
+3. **Continue with ChatGPT.** A tab opens at OpenAI — sign in and accept the plan permissions. Back in the extension, pick a **Model** and click **Save & Continue**.
 
-**What you need:** Node.js 20 or later. Check with `node --version`. If the
-command is not found, install it from [nodejs.org](https://nodejs.org) first —
-nothing else needs installing, and the helper has no dependencies.
+**If macOS says it can't open the installer.** The installer is not signed with an Apple Developer ID and is not notarized by Apple, so macOS may block the first double-click. That is expected. Only use the file from Employee Zero's GitHub Release, then:
 
-1. Open a terminal in the folder that contains `helper/` — the one from the
-   second ZIP. On macOS you can right-click the folder in Finder and choose
-   **New Terminal at Folder**.
-2. Start the helper:
+1. Double-click the `.pkg`. When macOS says it can't be opened, click **Done**.
+2. Open **System Settings → Privacy & Security** and scroll to the **Security** section.
+3. Next to the installer's name, click **Open Anyway**, then confirm (password or Touch ID).
+4. Open the installer again and follow it to the end.
 
-   ```
-   node helper/siwc-helper.js
-   ```
+You never need to turn off any macOS protection. The extension has the same three steps in a *macOS blocked the installer?* link beside the download button.
 
-   It prints the address it is listening on and stays running. Leave it running
-   while you use this method.
-3. In the extension, choose **ChatGPT subscription** and click **Continue with
-   ChatGPT**.
-4. Chrome asks for permission to reach `127.0.0.1`. That is the helper on your
-   own computer. Allow it.
-5. A tab opens at OpenAI. Sign in, and accept the plan permissions when asked.
-6. Come back to the extension. It notices on its own, usually within a second or
-   two, and shows **Connected as _your address_**.
-7. Pick a model from the list — those are the models your account can use — and
-   click **Save & Continue**.
+**Cost.** Replies use your ChatGPT plan's allowance, shared with ChatGPT itself — not unlimited. OpenAI decides at sign-in whether your plan can be used this way. A ChatGPT subscription is separate from API credit.
 
-<a href="assets/09-chatgpt-connected.png"><img src="assets/09-chatgpt-connected.png" alt="Connected to a ChatGPT plan, with a model chosen" width="400"></a>
+**Where your sign-in is kept.** On your own Mac, in a file only your user account can read — not in the browser. **Sign Out** in the extension revokes it at OpenAI and deletes it.
 
-**Where your sign-in is kept.** Not in the browser. The helper keeps it in a
-single file on your own computer — `~/.config/whatsapp-sales-ai-copilot/credentials.json`
-on macOS and Linux, `%APPDATA%\whatsapp-sales-ai-copilot\credentials.json` on
-Windows — readable only by your user account. The extension never receives a
-token at all, and it has nowhere to put one. **Sign out** in the extension
-revokes it at OpenAI and deletes the file.
+**Optional backup.** In **Settings → AI Connection → ChatGPT** you can turn on **Use API Key as backup**. It is **off by default**. When on, and only if ChatGPT is out of allowance or temporarily unavailable, the request goes to your API provider instead — **which means your chat text is sent to that third-party provider**. Fill in the API fields (Option B) for it to work.
 
-**Cost:** replies count against your plan's allowance — the same allowance you
-use in ChatGPT itself. It is not unlimited. Whether your plan can be used this
-way at all is decided by OpenAI when you sign in; if your account is not
-eligible, or has no allowance left, the extension tells you which of the two it
-was, and the API key method below still works.
+### Option B — API Key
 
-### Option B — Use Your Own API Key
+No Connector, no ChatGPT subscription. Works on any computer.
 
-Nothing to install. You need an API key from a provider.
+**What is an API key?** A private code that lets this extension use an AI provider. It is different from your ChatGPT login or subscription — your provider bills it separately.
 
-**What is an API key?**
+If you don't have one: pick a provider with an **OpenAI-compatible API**, create an account, generate a key in its dashboard, and find its **API Base URL** and **Model ID** in its documentation.
 
-An API key is a private code that allows this extension to connect to an AI
-provider. It's different from your ChatGPT login or subscription.
+In the extension choose **API Key** and fill in:
 
-If you don't have one yet:
+- **API Base URL** * — your provider's API address.
+- **API Key** * — your private key.
+- **Model ID** * — the model you want to use.
+- **Fallback Base URL** — optional; leave empty unless you need it.
 
-1. Choose an AI provider that supports an **OpenAI-compatible API**.
-2. Create an API account and generate a key from the provider's dashboard.
-3. Find the provider's **API Base URL** and **Model ID** in its documentation.
+(* required). Click **Test Connection**, then **Save & Continue**.
 
-In the extension, choose **Your own API key** and enter:
-
-- **API Base URL** — your provider's API address.
-- **API Key** — your private API key.
-- **Model ID** — the AI model you want to use.
-
-Leave **Fallback Base URL** empty unless you need it. Click **Test Connection**,
-then **Save & Continue**.
-
-<table>
-<tr>
-<td align="center"><a href="assets/02-connect-your-ai.png"><img src="assets/02-connect-your-ai.png" alt="Test the AI connection" width="195"></a><br><sub>Test connection</sub></td>
-<td align="center"><a href="assets/03-what-to-do-next.png"><img src="assets/03-what-to-do-next.png" alt="Complete setup" width="195"></a><br><sub>Continue</sub></td>
-</tr>
-</table>
-
-**Cost:** The extension is free and open source. Your AI provider charges you for
-usage at its own rates.
-
-**Keep your API key private.** Do not share it with anyone.
+**Cost.** The extension is free and open source; your provider charges you at its own rates. **Keep your API key private** — do not share it.
 
 ### Changing your mind later
 
-Open the extension's settings (the ⚙ button) and use the same two-way switch at
-the top of **Advanced**. The other method's details are still there, your
-per-chat instructions are untouched, and your drafts are untouched.
+Open Settings (the ⚙ button). **AI Connection** at the top switches between **ChatGPT** and **API Key**; the other one's details are kept. Settings is one page: AI Connection, AI Prompt, Messages, Conversation Context Character Limit, Thinking Depth (API Key), Advanced Settings (API Key), then **Save Settings**.
 
-<a href="assets/10-settings-chatgpt.png"><img src="assets/10-settings-chatgpt.png" alt="AI settings, showing the connection method switch" width="400"></a>
-
-## Step 4 — Generate Your First Reply
+## Step 4 — Generate your first reply
 
 1. Open a customer conversation in WhatsApp Web.
-2. Click **Generate Reply**.
-3. Review or edit the AI-generated message.
+2. Click **Generate Reply** and wait for **✓ Ready** next to *AI Reply*.
+3. Review or edit the message.
 4. Click **Send**.
 
-<table>
-<tr>
-<td align="center"><a href="assets/04-generated-draft.png"><img src="assets/04-generated-draft.png" alt="AI-generated reply and draft" width="225"></a><br><sub>Generate and edit</sub></td>
-<td align="center"><a href="assets/05-per-chat-instruction.png"><img src="assets/05-per-chat-instruction.png" alt="Optional customer-specific instruction" width="225"></a><br><sub>Optional chat instructions</sub></td>
-</tr>
-</table>
+<a href="assets/04-generated-draft.png"><img src="assets/04-generated-draft.png" alt="AI-generated reply and draft (earlier build)" width="260"></a>
 
-You can also choose Short, Medium, or Long replies and add instructions for individual customers.
+Choose **Short**, **Medium** or **Long**. Use **Add a tip for this message** for private guidance (for example, "Ask if their financing is approved") — the AI uses it but never repeats it to the customer. **Reload** re-reads the open conversation.
 
-## Need Help?
+**Follow-up & Send** writes *and sends* a reply in one click, without showing it to you first. Use it deliberately.
 
-**Can't find Load unpacked?** Enable Developer mode first.
+## Need help?
 
-**Extension won't load?** Select the folder containing `manifest.json`, not the ZIP file.
+**Can't find Load unpacked?** Turn on Developer mode first.
 
-**"The local helper is not running."** The helper is not started, or it is on a
-different port from the one in the settings. Run `node helper/siwc-helper.js`
-from the folder that contains `helper/`, and check the **Helper address** field
-matches the port it printed.
+**Extension won't load?** Select the folder containing `manifest.json`, not the ZIP.
 
-**"Port 8788 is already in use."** Another copy of the helper is probably
-already running. That is usually fine. If not, start it with
-`node helper/siwc-helper.js --port 8789` and set **Helper address** to
-`http://127.0.0.1:8789`.
+**Step 1 says "Not installed" after installing.** Click **Recheck**. If Step 2 is not allowed, click **Allow Access** first — the extension can't look for the Connector without it.
 
-**Sign-in finished but replies still fail.** Run
-`node helper/siwc-helper.js --status` and look at whether plan usage is allowed.
-If it is not, click **Sign out** and sign in again, accepting the plan
-permissions when asked.
+**macOS blocked the installer.** See *If macOS says it can't open the installer* above.
 
-**"No plan access" or an allowance message.** That comes from OpenAI, not from
-this extension, and it cannot be worked around here. Switch to **Your own API
-key**, which always works.
+**"No plan access", or an allowance message.** That comes from OpenAI and can't be worked around here. Use **API Key**, or turn on the API Key backup.
 
-**AI connection failed (API key method).** Check your API Base URL, API Key, Model ID, and provider account.
+**Sign-in finished but replies fail.** Click **Sign Out**, then **Continue with ChatGPT** again and accept the plan permissions.
 
-**Stopping the helper.** Press Ctrl+C in the terminal it is running in. The
-extension will say the helper is off until you start it again.
+**API Key connection failed.** Check API Base URL, API Key, Model ID and your provider account.
 
-**Updating the extension?** Download the latest ZIP, replace the files in the same folder, and click Reload on `chrome://extensions`. Refresh WhatsApp Web afterward. If you updated the helper too, stop it and start it again.
+**Updating?** Download the latest `01-REQUIRED-…zip`, replace the files in the same folder, click Reload on `chrome://extensions`, and refresh WhatsApp Web. If a new ChatGPT Connector is offered, install it the same way; your sign-in is kept.
 
-For privacy details, see [PRIVACY.md](../PRIVACY.md). For what the helper does
-and does not do, see [helper/README.md](../helper/README.md).
+**Developers** can still run the Connector from source — see [helper/README.md](../helper/README.md).
 
-*Screenshots show fictional demo data. When you generate a reply, your chat text is sent to the AI provider you selected.*
+For privacy details see [PRIVACY.md](../PRIVACY.md).
+
+*When you generate a reply, your chat text is sent to the AI provider you selected.*
 
 [← Back to project home](../README.md)

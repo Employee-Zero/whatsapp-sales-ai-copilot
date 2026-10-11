@@ -2,7 +2,7 @@
 
 **Product:** WhatsApp Sales AI Copilot
 **Brand:** Employee Zero
-**Version:** 0.2.0
+**Version:** 0.1.3
 **Repository:** https://github.com/Employee-Zero/whatsapp-sales-ai-copilot
 
 ---
@@ -64,7 +64,7 @@ The extension's entire purpose is to work inside your already-logged-in WhatsApp
 
 ### The ChatGPT subscription credential is held by a local helper
 
-There are two ways to connect an AI provider. The second one — signing in with a ChatGPT plan — involves a small program in `helper/` that you run yourself, on the same computer, with Node.js. This section is about what that does and does not protect.
+There are two ways to connect an AI provider. The second one — signing in with a ChatGPT plan — involves **ChatGPT Connector**, a small background app made by Employee Zero (source in `helper/`), installed on macOS from a `.pkg` on the GitHub Release. The `.pkg` is not signed with an Apple Developer ID or notarized; install it only from this repository's releases. This section is about what that does and does not protect.
 
 **Why it is a separate program, not part of the extension.** OpenAI's sign-in for open-source and locally hosted apps accepts only a callback to an HTTP listener on `127.0.0.1`; the path is fixed, only the port may vary, and `localhost` is explicitly not accepted. `chrome.identity.launchWebAuthFlow` only intercepts `https://<extension-id>.chromiumapp.org/*`, which is not an accepted redirect, and an MV3 extension cannot open a listening socket. So the callback has to be received by an ordinary local process. The extension declares no `identity` permission and never calls `launchWebAuthFlow`.
 
@@ -79,7 +79,7 @@ There are two ways to connect an AI provider. The second one — signing in with
 ### Where your conversation data goes
 
 - To generate a reply, conversation text is sent to the AI provider **you configured**. It leaves your machine. The provider's handling of it is governed by that provider's policy, not by this project — see `PRIVACY.md`. With the subscription method the provider is OpenAI, and the request goes to the public Responses API, not to any ChatGPT-internal endpoint.
-- The optional host permissions are requested at the moment they are needed and are never granted up front. The extension asks for `http://127.0.0.1/*` when you click **Continue with ChatGPT**, because the helper listens there; that is the only permission the shipped extension ever requests by itself. The wider ones (`https://*/*`, `http://localhost/*`) exist so an endpoint **you** type into Settings can be reached, and nothing in the shipped extension asks for them — they are there for the case where your provider is not already covered.
+- The optional host permissions are requested at the moment they are needed and are never granted up front. The extension asks for `http://127.0.0.1/*` when you click **Allow Access** (or **Recheck**), because the Connector listens there; that is the only permission the shipped extension ever requests by itself. The wider ones (`https://*/*`, `http://localhost/*`) exist so an endpoint **you** type into Settings can be reached, and nothing in the shipped extension asks for them — they are there for the case where your provider is not already covered.
 - **An optional permission is not a harmless one.** Once granted, it persists for that Chrome profile until you revoke it on `chrome://extensions`. The loopback grant lets the extension talk to anything else listening on `127.0.0.1` that does not defend itself, so grant it only if you intend to use the subscription method, and revoke it if you stop.
 - The development test bridge (`src/test/bridge.html`) is the other thing in the repository that calls `chrome.permissions.request`. It is excluded from the release ZIP and is not part of the shipped extension.
 
@@ -94,7 +94,7 @@ What it does **not** do:
 
 - **There is no recipient allowlist.** There is no list of approved contacts, no per-chat permission, no "are you sure this is the right customer" check beyond the guard above.
 - **A user who clicks Send sends to whatever chat is open.** If the wrong chat is open when you click, the message goes to the wrong chat. Read the recipient before you send.
-- The follow-up action asks for confirmation before sending a message you have not previewed, but confirmation is a prompt, not a correctness check. It cannot know who you meant to message.
+- **Follow-up & Send sends without showing the message first and has no confirmation step.** It writes into the chat that is open, so check which chat is open before using it. The button carries a two-line warning; that warning is the only safeguard.
 
 ### The development test bridge is not part of the shipped extension
 
