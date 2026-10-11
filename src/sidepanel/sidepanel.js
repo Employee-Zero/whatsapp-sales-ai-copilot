@@ -32,10 +32,6 @@ const $ = (id) => document.getElementById(id);
 const el = {
   settings: $('settings'),
   btnSettings: $('btn-settings'),
-  tabBasic: $('tab-basic'),
-  tabAdvanced: $('tab-advanced'),
-  paneBasic: $('pane-basic'),
-  paneAdvanced: $('pane-advanced'),
 
   btnConn: $('btn-conn'),
   connLabel: $('conn-label'),
@@ -47,6 +43,11 @@ const el = {
   suApiKeyPane: $('su-apikey'),
   suCgStatus: $('su-cg-status'),
   suCgWhy: $('su-cg-why'),
+  suCgAllow: $('su-cg-allow'),
+  cfgCgAllow: $('cfg-cg-allow'),
+  cfgCgInstall: $('cfg-cg-install'),
+  cfgThinkingWrap: $('cfg-thinking-wrap'),
+  cfgAdvApi: $('cfg-adv-api'),
   suCgSignIn: $('su-cg-signin'),
   suCgSignOut: $('su-cg-signout'),
   suCgModel: $('su-cg-model'),
@@ -54,7 +55,6 @@ const el = {
   suCgRefresh: $('su-cg-refresh'),
   suCgSave: $('su-cg-save'),
   suCgResult: $('su-cg-result'),
-  suCgCmd: $('su-cg-cmd'),
   suBaseUrl: $('su-baseUrl'),
   suApiKey: $('su-apiKey'),
   suModel: $('su-model'),
@@ -71,7 +71,6 @@ const el = {
   btnResetPrompt: $('btn-reset-prompt'),
   cfgContextMessages: $('cfg-contextMessages'),
   cfgThinking: $('cfg-thinking'),
-  thinkingHint: $('thinking-hint'),
 
   cfgModes: $('cfg-modes'),
   cfgModeHint: $('cfg-mode-hint'),
@@ -84,7 +83,6 @@ const el = {
   cfgCgModelHint: $('cfg-cg-model-hint'),
   cfgCgRefresh: $('cfg-cg-refresh'),
   cfgCgTest: $('cfg-cg-test'),
-  cfgCgCmd: $('cfg-cg-cmd'),
   cfgHelperUrl: $('cfg-helperUrl'),
   cgTestResult: $('cg-test-result'),
 
@@ -124,6 +122,7 @@ const el = {
   insChipText: $('ins-chip-text'),
 
   status: $('status'),
+  replyState: $('reply-state'),
   blocked: $('blocked'),
   blockedDetail: $('blocked-detail'),
 
@@ -402,22 +401,41 @@ function setStatus(text, kind = 'info') {
     clearTimeout(statusTimer);
     statusTimer = null;
   }
-  if (!text) {
+  const clearInline = () => {
+    el.replyState.textContent = '';
+    el.replyState.title = '';
+    el.replyState.className = 'reply-state';
+  };
+  const clearBanner = () => {
     el.status.classList.add('hidden');
     el.status.textContent = '';
+  };
+
+  if (!text) {
+    clearInline();
+    clearBanner();
     return;
   }
-  el.status.textContent = text;
-  el.status.className = `status ${kind === 'info' ? '' : kind}`.trim();
-  el.status.classList.remove('hidden');
 
-  if (kind === 'success' || kind === 'info') {
+  if (kind === 'info' || kind === 'success') {
+    // Routine progress lives in the AI Reply header, in space that is always
+    // there, so the reply box never jumps when it appears or goes away.
+    clearBanner();
+    el.replyState.textContent = text;
+    el.replyState.title = text;
+    el.replyState.className = `reply-state${kind === 'success' ? ' success' : ''}`;
     statusTimer = setTimeout(() => {
       statusTimer = null;
-      el.status.classList.add('hidden');
-      el.status.textContent = '';
+      clearInline();
     }, 4500);
+    return;
   }
+
+  // Errors and warnings carry diagnostics, so they keep the full-width banner.
+  clearInline();
+  el.status.textContent = text;
+  el.status.className = `status ${kind}`.trim();
+  el.status.classList.remove('hidden');
 }
 
 /**
@@ -506,7 +524,7 @@ function renderContext(ctx) {
 
   el.chatCount.textContent = String(ctx.counts.total);
   if (ctx.counts.total) {
-    el.chatBreakdown.textContent = `${ctx.counts.incoming} in / ${ctx.counts.outgoing} out`;
+    el.chatBreakdown.textContent = `${ctx.counts.incoming} received / ${ctx.counts.outgoing} sent`;
   } else {
     el.chatBreakdown.textContent = '';
   }
@@ -805,8 +823,8 @@ async function onSetupTest() {
 
 /** The two panes that show ChatGPT state — first-run and Settings. */
 const CG_PANES = [
-  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, cmd: el.suCgCmd, why: el.suCgWhy, refresh: el.suCgRefresh, save: el.suCgSave },
-  { status: el.cfgCgStatus, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, cmd: el.cfgCgCmd, refresh: el.cfgCgRefresh, test: el.cfgCgTest },
+  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, allow: el.suCgAllow, why: el.suCgWhy, refresh: el.suCgRefresh, save: el.suCgSave },
+  { status: el.cfgCgStatus, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, allow: el.cfgCgAllow, install: el.cfgCgInstall, refresh: el.cfgCgRefresh, test: el.cfgCgTest },
 ];
 
 /** How often the panel re-reads the helper's status while a sign-in is open. */
@@ -814,6 +832,36 @@ const SIGN_IN_POLL_MS = 2000;
 
 /** Give up watching after this long; the user can always press the button again. */
 const SIGN_IN_WATCH_MS = 3 * 60 * 1000;
+
+/**
+ * Whether Chrome has granted `http://127.0.0.1/*`. null = not asked yet.
+ * Only consulted on the ChatGPT path; API Key mode never requests it.
+ * @type {boolean|null}
+ */
+let loopbackGranted = null;
+
+async function checkLoopbackPermission() {
+  try {
+    loopbackGranted = await chrome.permissions.contains({ origins: ['http://127.0.0.1/*'] });
+  } catch (err) {
+    loopbackGranted = false;
+  }
+  return loopbackGranted;
+}
+
+/** The "Allow local access" button: a user gesture, so Chrome can show its prompt. */
+async function onAllowLocalAccess(btn) {
+  await run(btn, 'chatgpt-allow', async () => {
+    loopbackGranted = await ensureLoopbackPermission();
+    renderChatGptPanes();
+    if (!loopbackGranted) {
+      setCgResult('Chrome did not grant local access, so the Helper cannot be found. Press Allow local access to try again.', 'error');
+      return;
+    }
+    setCgResult('', 'success');
+    await refreshChatGptStatus({ quiet: true });
+  });
+}
 
 /** The connection method that is actually saved — not the one the form shows. */
 function activeMode() {
@@ -851,13 +899,20 @@ function setMode(mode, { save = false } = {}) {
   el.suModeHint.textContent = spec ? spec.hint : '';
   el.cfgModeHint.textContent = spec ? spec.hint : '';
 
+  // Thinking depth, temperature and token ceiling are API Key settings: the
+  // ChatGPT route cannot accept them, so they are not shown for it.
+  el.cfgThinkingWrap.classList.toggle('hidden', isCg);
+  el.cfgAdvApi.classList.toggle('hidden', isCg);
+
   renderConnectionPill();
 
   if (isCg) {
     // The state this pane renders is not in the extension, so it has to be asked
     // for. Quiet: a failed status read is a state the pane draws, not an error
     // to announce.
-    refreshChatGptStatus({ quiet: true }).catch(() => {});
+    checkLoopbackPermission()
+      .then((granted) => (granted ? refreshChatGptStatus({ quiet: true }) : renderChatGptPanes()))
+      .catch(() => {});
     if (save && modeChoice !== activeMode()) persistMode();
   }
 }
@@ -1002,7 +1057,6 @@ function renderChatGptPanes({ resetModels = false } = {}) {
   const s = chatgptStatus;
   const connected = !!(s && s.helper === 'running' && s.signedIn && s.planScope);
   const busy = !!(s && (s.signIn === 'pending' || (s.helper === 'running' && s.signedIn && !s.planScope)));
-  const command = (s && s.startCommand) || helperStartCommand(cfg || {});
 
   for (const pane of CG_PANES) {
     if (!pane.status) continue;
@@ -1017,7 +1071,12 @@ function renderChatGptPanes({ resetModels = false } = {}) {
     // The button stays visible until connected, but is only enabled once the
     // Helper has actually been detected: a clickable button that cannot work
     // would be a lie.
-    const canSignIn = !!s && s.helper === 'running' && !connected;
+    const helperUp = !!s && s.helper === 'running';
+    const canSignIn = helperUp && !connected;
+    // The permission comes first: without it the panel cannot even look for the
+    // Helper, so the one useful button is the one that asks for it.
+    if (pane.allow) pane.allow.classList.toggle('hidden', loopbackGranted !== false);
+    if (pane.install) pane.install.classList.toggle('hidden', !(loopbackGranted && !helperUp));
     pane.signIn.classList.toggle('hidden', connected);
     pane.signIn.classList.toggle('busy', busy);
     pane.signIn.disabled = busy || !canSignIn;
@@ -1027,7 +1086,6 @@ function renderChatGptPanes({ resetModels = false } = {}) {
     }
     pane.signOut.classList.toggle('hidden', !(s && s.signedIn));
 
-    if (pane.cmd) pane.cmd.textContent = command;
 
     // The "why a Helper" explanation is for someone who has not connected yet.
     // Once the account is connected it collapses to a single line, and the
@@ -1047,6 +1105,9 @@ function renderChatGptPanes({ resetModels = false } = {}) {
  * @returns {{text: string, kind: string}} kind is '' | 'is-ok' | 'is-warn' | 'is-bad'
  */
 function describeChatGptStatus(s) {
+  if (loopbackGranted === false) {
+    return { text: 'Allow local access so this panel can look for the Helper on this Mac.', kind: 'is-warn' };
+  }
   if (!s) return { text: 'Checking the local helper…', kind: '' };
 
   if (s.helper !== 'running') {
@@ -1398,7 +1459,6 @@ function renderConfig(c) {
 
   el.cfgContextMessages.value = String(c.contextMessages);
   el.cfgThinking.value = c.thinking;
-  updateThinkingHint();
 
   setLengthControl(c.replyLength);
   // The mode the form shows comes from storage on every re-render, exactly like
@@ -1407,12 +1467,6 @@ function renderConfig(c) {
   setMode(c.connectionMode, { save: false });
   renderChatGptPanes({ resetModels: true });
   renderOnboarding();
-}
-
-/** Explain what the selected thinking depth costs, in plain terms. */
-function updateThinkingHint() {
-  const spec = THINKING_SPECS[el.cfgThinking.value];
-  el.thinkingHint.textContent = spec ? spec.hint : '';
 }
 
 /** Reflect the active reply length in the segmented control. */
@@ -1480,7 +1534,7 @@ function buildSettingsOptions() {
   for (const [value, spec] of Object.entries(THINKING_SPECS)) {
     const opt = document.createElement('option');
     opt.value = value;
-    opt.textContent = `${spec.label} — ${spec.hint}`;
+    opt.textContent = spec.label;
     el.cfgThinking.appendChild(opt);
   }
 }
@@ -1656,7 +1710,7 @@ async function onRead() {
 
 async function onGenerate() {
   await run(el.btnGenerate, 'generate', async () => {
-    setStatus('Reading the current conversation…');
+    setStatus('Generating…');
     // The worker reads the instruction from storage, so anything still sitting
     // in the debounce window has to land there first.
     await flushInstruction();
@@ -1687,7 +1741,7 @@ async function onGenerate() {
     // belongs to the reply that now has to be reviewed against it.
     insOpen = false;
     await renderInstruction();
-    setStatus('AI reply ready — review it, then Send.', 'success');
+    setStatus('✓ Ready', 'success');
     refreshSendButtons();
     el.reply.focus();
   });
@@ -1733,7 +1787,7 @@ async function onFollowUpAndSend() {
       return;
     }
 
-    setStatus('Reading the conversation and generating a reply…');
+    setStatus('Generating…');
     await flushInstruction();
     const res = await callWorker({ type: MSG.FOLLOWUP_AND_SEND });
 
@@ -1898,29 +1952,14 @@ el.btnSettings.addEventListener('click', () => {
   el.btnSettings.setAttribute('aria-expanded', String(opening));
 });
 
-// The connection pill is a shortcut to the one screen that explains it, and it
-// opens on the tab that holds the answer rather than on Basic.
+// The connection pill is a shortcut to the connection block at the top of Settings.
 el.btnConn.addEventListener('click', () => {
   el.settings.classList.remove('hidden');
   el.btnSettings.setAttribute('aria-expanded', 'true');
-  showSettingsTab('advanced');
   el.cfgModes.scrollIntoView({ block: 'start' });
   refreshChatGptStatus({ quiet: true }).catch(() => {});
 });
 
-function showSettingsTab(which) {
-  const basic = which === 'basic';
-  el.paneBasic.classList.toggle('hidden', !basic);
-  el.paneAdvanced.classList.toggle('hidden', basic);
-  el.tabBasic.classList.toggle('is-on', basic);
-  el.tabAdvanced.classList.toggle('is-on', !basic);
-  el.tabBasic.setAttribute('aria-selected', String(basic));
-  el.tabAdvanced.setAttribute('aria-selected', String(!basic));
-}
-
-el.tabBasic.addEventListener('click', () => showSettingsTab('basic'));
-el.tabAdvanced.addEventListener('click', () => showSettingsTab('advanced'));
-el.cfgThinking.addEventListener('change', updateThinkingHint);
 
 el.btnRead.addEventListener('click', onRead);
 el.btnGenerate.addEventListener('click', onGenerate);
@@ -1967,6 +2006,8 @@ for (const [seg, persist] of [
   });
 }
 
+el.suCgAllow.addEventListener('click', () => onAllowLocalAccess(el.suCgAllow));
+el.cfgCgAllow.addEventListener('click', () => onAllowLocalAccess(el.cfgCgAllow));
 el.suCgSignIn.addEventListener('click', () => onChatGptSignIn(el.suCgSignIn));
 el.cfgCgSignIn.addEventListener('click', () => onChatGptSignIn(el.cfgCgSignIn));
 el.suCgSignOut.addEventListener('click', () => onChatGptSignOut(el.suCgSignOut));
@@ -2091,6 +2132,12 @@ function startHelperPolling() {
     const found = !!(chatgptStatus && chatgptStatus.helper === 'running');
     if (found && Date.now() - lastPoll < 20_000) return;
     lastPoll = Date.now();
+    if (loopbackGranted !== true) {
+      // Not allowed yet: nothing to ask the Helper. Re-check, in case the user
+      // granted it from Chrome's own settings.
+      checkLoopbackPermission().then((ok) => (ok ? refreshChatGptStatus({ quiet: true }) : renderChatGptPanes())).catch(() => {});
+      return;
+    }
     refreshChatGptStatus({ quiet: true }).catch(() => {});
   }, 3000);
 }

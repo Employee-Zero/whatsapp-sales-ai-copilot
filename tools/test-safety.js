@@ -623,7 +623,7 @@ eq('whitespace-only appends nothing', S.instructionBlock('   \n\t  '), '');
 
 const block = S.instructionBlock('Ask how the trial installation went.');
 check('the text is carried through', block.includes('Ask how the trial installation went.'));
-check('it is labelled as an instruction, not as customer speech', /ADDITIONAL INSTRUCTION/.test(block));
+check('it is labelled as an instruction, not as customer speech', /PRIVATE TIP FROM THE SALESPERSON/.test(block) && /<tip>/.test(block) && /Never quote/.test(block));
 check('it is marked as coming from the salesperson', /salesperson/i.test(block));
 check('it claims priority over the general guidance', /takes priority/i.test(block));
 
@@ -657,7 +657,7 @@ check('the user message is untouched by it', !/buildUserPrompt\([^)]*instruction
 // The worker has to actually fetch it — the panel writing to storage is only
 // half a feature.
 check('the worker reads the instruction store', /STORAGE_KEYS\.INSTRUCTIONS/.test(workerSrc));
-check('the worker passes it to the generate op', /instruction:\s*await loadInstruction\(/.test(workerSrc));
+check('the worker passes it to the generate op', /loadInstruction\(context\.chatId\)/.test(workerSrc) && /^\s*instruction,$/m.test(workerSrc));
 
 // Persistence mirror. The instruction is keyed by chat id for the same reason
 // drafts are: it is about one customer.

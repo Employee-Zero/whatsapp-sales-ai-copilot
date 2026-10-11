@@ -51,6 +51,7 @@ import {
   validateIdToken,
 } from './lib/oauth.js';
 import { newHostId } from './lib/pkce.js';
+import { setNetLogger } from './lib/net.js';
 import { generate, listModels } from './lib/responses.js';
 import {
   accountKey,
@@ -355,37 +356,58 @@ async function handleCallback(url) {
   }
 
   try {
+    // The issued client ID arrives on this same callback and must be read BEFORE
+    // the code is exchanged: the token request has to name the registered
+    // client (oaiapp_…), not the dynamic entrypoint used to start the flow.
+    const registration = parseRegistrationCallback(params);
+    const issuedClientId = registration.issuedClientId || '';
+    let effectiveClientId;
+
+    if (pendingAuth.firstRegistration) {
+      if (!/^oaiapp_[A-Za-z0-9_-]+$/.test(issuedClientId)) {
+        // Stop here. Exchanging with dynamic_agent_client would burn the
+        // single-use code on a request that is known to be wrong.
+        log(`Registration callback carried no usable oaiapp_… client ID (parameters: ${registration.parameterNames.join(',')})`);
+        throw new HelperError(
+          'CONFIG_INVALID',
+          'OpenAI did not return a client registration for this app, so the sign-in cannot be completed. Try again.',
+          { status: 502 },
+        );
+      }
+      effectiveClientId = issuedClientId;
+      log(`Registration returned a client ID (${issuedClientId.slice(0, 12)}…)`);
+    } else {
+      // Returning sign-in: the stored client is the only acceptable one.
+      if (issuedClientId && issuedClientId !== pendingAuth.clientIdUsed) {
+        log('Callback named a different client ID than the saved registration — refusing');
+        throw new HelperError(
+          'CONFIG_INVALID',
+          'The sign-in response named a different app registration than the one saved. Sign out and sign in again.',
+          { status: 502 },
+        );
+      }
+      effectiveClientId = pendingAuth.clientIdUsed;
+    }
+
     const tokenResponse = await exchangeCode({
       code,
       verifier: pendingAuth.verifier,
       redirectUri: pendingAuth.redirectUri,
-      clientId: pendingAuth.clientIdUsed,
+      clientId: effectiveClientId,
+      firstRegistration: pendingAuth.firstRegistration,
       resource: CHATGPT_RESOURCE,
     });
 
-    const registration = parseRegistrationCallback(params);
-    const issuedClientId = registration.issuedClientId || '';
-    if (issuedClientId) {
-      log(`Registration returned a client ID (${issuedClientId.slice(0, 12)}…)`);
-    } else if (pendingAuth.firstRegistration) {
-      // Documented: a registration callback without an issued ID means the
-      // registration did not complete. Say so plainly rather than storing
-      // `dynamic_agent_client` as if it were a real client ID.
-      log('Registration callback carried no oaiapp_… value — registration may be incomplete');
-    }
-
-    // The ID token is always issued to the client ID that was *sent*, which on a
-    // first registration is the dynamic entrypoint. The issued ID is what gets
-    // stored for next time.
+    // The ID token's audience is the client ID the token request used.
     const claims = await validateIdToken(tokenResponse.id_token, {
-      clientId: pendingAuth.clientIdUsed,
+      clientId: effectiveClientId,
       nonce: pendingAuth.nonce,
     });
 
     const scopes = grantedScopes(tokenResponse);
     const account = {
-      clientId: issuedClientId || pendingAuth.clientIdUsed,
-      usedDynamicClientId: pendingAuth.firstRegistration && !issuedClientId,
+      clientId: effectiveClientId,
+      usedDynamicClientId: false,
       label: claims.email || claims.name || claims.sub,
       email: claims.email || '',
       name: claims.name || '',
@@ -807,6 +829,7 @@ async function dispatch(req, res, url, isPost, port) {
 function log(...args) {
   console.log('[siwc-helper]', ...args);
 }
+setNetLogger((line) => log(line));
 
 /** @param {string} [line] */
 function usage(line) {

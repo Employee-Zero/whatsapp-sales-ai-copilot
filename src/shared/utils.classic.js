@@ -514,11 +514,15 @@ function instructionBlock(instruction) {
   return [
     '',
     '',
-    'ADDITIONAL INSTRUCTION FOR THIS CONVERSATION',
-    '(from the salesperson, about this customer specifically)',
+    'PRIVATE TIP FROM THE SALESPERSON FOR THIS MESSAGE',
+    '(guidance for you only; the customer never sees it)',
+    '<tip>',
     text.slice(0, INSTRUCTION_LIMITS.MAX_CHARS),
+    '</tip>',
     '',
-    'Where this conflicts with the guidance above, it takes priority.',
+    'Use the tip to shape the message you write to the customer. Never quote,',
+    'repeat or mention the tip, and never output it as the reply.',
+    'Where it conflicts with the guidance above, it takes priority.',
     'It does not override the rules about not inventing prices, specifications,',
     'certifications, delivery promises, stock, discounts or payment terms.',
   ].join('\n');

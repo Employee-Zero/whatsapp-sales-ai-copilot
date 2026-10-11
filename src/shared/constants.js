@@ -199,7 +199,7 @@ const THINKING_MODE = Object.freeze({
 
 const THINKING_SPECS = Object.freeze({
   off: { label: 'Off', hint: 'Fastest. No reasoning.', type: 'disabled', budgetTokens: 0, reserveTokens: 0 },
-  auto: { label: 'Auto', hint: 'Whatever the model decides.', type: null, budgetTokens: 0, reserveTokens: 2048 },
+  auto: { label: 'Auto', hint: 'Model decides.', type: null, budgetTokens: 0, reserveTokens: 2048 },
   low: { label: 'Low', hint: 'A little reasoning.', type: 'enabled', budgetTokens: 512, reserveTokens: 512 },
   high: { label: 'High', hint: 'Reason carefully. Slower.', type: 'enabled', budgetTokens: 4096, reserveTokens: 4096 },
 });
@@ -276,14 +276,14 @@ const CONNECTION_MODE = Object.freeze({
  */
 const CONNECTION_MODE_SPECS = Object.freeze({
   chatgpt: {
-    label: 'ChatGPT subscription',
+    label: 'ChatGPT',
     short: 'ChatGPT',
-    hint: 'Use your own ChatGPT Plus or Pro plan. Needs the local helper running on this computer.',
+    hint: 'Uses an eligible ChatGPT subscription. Availability depends on your account.',
   },
   apiKey: {
-    label: 'Your own API key',
+    label: 'API Key',
     short: 'API key',
-    hint: 'Any OpenAI-compatible provider. Works on its own, with nothing else to install.',
+    hint: 'Any OpenAI-compatible provider.',
   },
 });
 

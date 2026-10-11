@@ -217,13 +217,24 @@ async function opGenerateReply() {
     throw e;
   }
 
+  const instruction = await loadInstruction(context.chatId);
   const result = await generateReply({
     contactName: context.contactName,
     transcript: context.transcript,
     messages: context.messages,
     messageCount: context.counts.total,
-    instruction: await loadInstruction(context.chatId),
+    instruction,
   });
+
+  // The tip is input to the AI, never output. If the model parrots it back as
+  // the whole reply, refuse it here — this also protects Follow-up & Send, which
+  // would otherwise deliver the salesperson's private note to the customer.
+  const squash = (t) => String(t || '').toLowerCase().replace(/[\s"'“”‘’.!?。]+/g, ' ').trim();
+  if (instruction && squash(result.text) === squash(instruction)) {
+    const e = new Error('The AI repeated your tip instead of writing a reply. Reword the tip and try again.');
+    e.code = ERR.AI_EMPTY;
+    throw e;
+  }
 
   return { text: result.text, context };
 }

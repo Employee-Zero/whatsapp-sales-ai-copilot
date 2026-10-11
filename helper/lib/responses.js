@@ -24,6 +24,7 @@
  */
 
 import { HelperError, fromProvider } from './errors.js';
+import { fetchRetryPreTls } from './net.js';
 
 const API_BASE = 'https://api.openai.com/v1';
 const RESPONSES_URL = `${API_BASE}/responses`;
@@ -184,7 +185,11 @@ function buildResponsesBody(args) {
     // The system prompt goes in `instructions`. Explicit system-role items in
     // `input` are rejected in this flow.
     instructions: args.instructions,
-    input: args.input,
+    // The subscription route wants `input` as a list of messages; a bare string
+    // is rejected.
+    input: Array.isArray(args.input)
+      ? args.input
+      : [{ role: 'user', content: [{ type: 'input_text', text: String(args.input) }] }],
     store: false,
     stream: true,
   };
@@ -212,7 +217,7 @@ async function generate(opts) {
 
   let res;
   try {
-    res = await fetch(RESPONSES_URL, {
+    res = await fetchRetryPreTls(RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -373,7 +378,7 @@ function statusFromFailure(failure) {
 async function listModels(opts) {
   let res;
   try {
-    res = await fetch(MODELS_URL, {
+    res = await fetchRetryPreTls(MODELS_URL, {
       headers: { Accept: 'application/json', Authorization: `Bearer ${opts.accessToken}` },
       signal: AbortSignal.timeout(30_000),
     });
@@ -391,7 +396,8 @@ async function listModels(opts) {
   }
 
   const body = await safeJson(res);
-  const all = body && Array.isArray(body.data) ? body.data : [];
+  // The catalogue is a top-level `models` array (older code read `data`).
+  const all = body && Array.isArray(body.models) ? body.models : body && Array.isArray(body.data) ? body.data : [];
   const visibilityReported = all.some((m) => m && typeof m.visibility === 'string');
 
   const models = all

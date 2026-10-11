@@ -14,6 +14,7 @@
 import { createPublicKey, verify as cryptoVerify } from 'node:crypto';
 import { createPkce, randomUrlSafe } from './pkce.js';
 import { HelperError } from './errors.js';
+import { fetchRetryPreTls } from './net.js';
 
 const ISSUER = 'https://auth.openai.com';
 const DISCOVERY_URL = `${ISSUER}/.well-known/openid-configuration`;
@@ -161,7 +162,8 @@ function buildAuthorizeUrl(opts) {
  * @param {string} opts.code
  * @param {string} opts.verifier
  * @param {string} opts.redirectUri exact URI, port included — a mismatch is rejected
- * @param {string} opts.clientId the value that was sent as `client_id`
+ * @param {string} opts.clientId the issued client ID (never the dynamic entrypoint)
+ * @param {boolean} [opts.firstRegistration] only changes the wording of an invalid_client error
  * @param {string} opts.resource
  * @returns {Promise<object>} the token response
  */
@@ -180,7 +182,7 @@ async function exchangeCode(opts) {
     body: body.toString(),
   });
   const parsed = await readJson(res);
-  if (!res.ok) throw tokenEndpointError(res, parsed);
+  if (!res.ok) throw tokenEndpointError(res, parsed, !!opts.firstRegistration);
   if (!parsed || !parsed.access_token) {
     throw new HelperError('CHATGPT_FAILED', 'The token response did not contain an access token.', { status: 502 });
   }
@@ -245,7 +247,7 @@ const TERMINAL_REFRESH_CODES = Object.freeze([
  * @param {any} body
  * @returns {HelperError}
  */
-function tokenEndpointError(res, body) {
+function tokenEndpointError(res, body, firstRegistration = false) {
   const code = body && typeof body.error === 'string' ? body.error : '';
   const description =
     (body && typeof body.error_description === 'string' && body.error_description) ||
@@ -253,6 +255,12 @@ function tokenEndpointError(res, body) {
     '';
 
   if (code === 'invalid_client') {
+    if (firstRegistration) {
+      return new HelperError('CONFIG_INVALID', 'OpenAI did not accept the new app registration during first sign-in. Try again; if it keeps failing, report it.', {
+        status: 401,
+        detail: description,
+      });
+    }
     return new HelperError('CONFIG_INVALID', 'The saved client registration was rejected. Sign in again.', {
       status: 401,
       detail: description,
@@ -505,7 +513,7 @@ function parseRegistrationCallback(params) {
  */
 async function fetchWithTimeout(url, init = {}) {
   try {
-    return await fetch(url, Object.assign({}, init, { signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS) }));
+    return await fetchRetryPreTls(url, Object.assign({}, init, { signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS) }));
   } catch (err) {
     const name = err && err.name;
     if (name === 'TimeoutError' || name === 'AbortError') {
