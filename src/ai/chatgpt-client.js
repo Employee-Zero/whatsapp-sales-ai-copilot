@@ -97,6 +97,8 @@ async function callHelper(cfg, path, opts = {}) {
     e.detail = (data && data.detail) || '';
     e.requestId = (data && data.requestId) || '';
     e.retryable = !!(data && data.retryable);
+    // Reply text had already started streaming: nothing may re-send this request.
+    e.partialOutput = !!(data && data.partialOutput);
     throw e;
   }
 

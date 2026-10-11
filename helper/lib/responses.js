@@ -298,19 +298,22 @@ async function generate(opts) {
       retryable: true,
       detail: (err && err.message) || 'stream error',
       requestId,
+      partialOutput: streamed.length > 0,
     });
   }
 
   if (failure) {
     // `failure` may be a documented structured error, or the bare
     // `{ detail: "..." }` shape direct-route admission is documented to return.
-    throw fromProvider(statusFromFailure(failure), failure, requestId);
+    const failed = fromProvider(statusFromFailure(failure), failure, requestId);
+    failed.partialOutput = streamed.length > 0;
+    throw failed;
   }
   if (!completed) {
     throw new HelperError(
       'CHATGPT_UNAVAILABLE',
       'The reply was cut off before it finished, so nothing was returned.',
-      { status: 503, retryable: true, detail: 'stream ended without response.completed', requestId },
+      { status: 503, retryable: true, detail: 'stream ended without response.completed', requestId, partialOutput: streamed.length > 0 },
     );
   }
 

@@ -60,6 +60,9 @@ const el = {
   suCgAllow: $('su-cg-allow'),
   cfgCgAllow: $('cfg-cg-allow'),
   cfgThinkingWrap: $('cfg-thinking-wrap'),
+  cfgBackupRow: $('cfg-backup-row'),
+  cfgApiFallback: $('cfg-apiFallback'),
+  cfgBackupHint: $('cfg-backup-hint'),
   cfgAdvApi: $('cfg-adv-api'),
   suCgSignIn: $('su-cg-signin'),
   suCgSignOut: $('su-cg-signout'),
@@ -700,7 +703,11 @@ function renderSetupForm(c) {
   el.suModel.value = c.model || '';
   el.suApiKey.value = '';
   el.suApiKey.placeholder = c.hasApiKey ? `${'•'.repeat(20)}${c.keyHint || ''}` : 'the key from your provider';
-  setMode(c.connectionMode, { save: false });
+  // A brand-new install (nothing configured for either route) opens on ChatGPT,
+  // the primary route. Anyone who already has an API key or a ChatGPT model keeps
+  // exactly the mode they saved.
+  const untouched = !c.hasApiKey && !c.primaryBaseUrl && !c.chatgptModel;
+  setMode(untouched ? CONNECTION_MODE.CHATGPT : c.connectionMode, { save: false });
   renderChatGptPanes({ resetModels: true });
 }
 
@@ -943,7 +950,12 @@ function setMode(mode, { save = false } = {}) {
   el.suChatgpt.classList.toggle('hidden', !isCg);
   el.suApiKeyPane.classList.toggle('hidden', isCg);
   el.cfgChatgpt.classList.toggle('hidden', !isCg);
-  el.cfgApiKeyPane.classList.toggle('hidden', isCg);
+  // ChatGPT is the primary route. In that mode the API Key fields are only a
+  // backup: they show when the user turns the backup on, and the opt-in itself
+  // is offered only there. In "API Key only" the fields are the whole setup.
+  const backupOn = isCg && el.cfgApiFallback.checked;
+  el.cfgBackupRow.classList.toggle('hidden', !isCg);
+  el.cfgApiKeyPane.classList.toggle('hidden', isCg && !backupOn);
 
   const spec = CONNECTION_MODE_SPECS[modeChoice];
   el.suModeHint.textContent = spec ? spec.hint : '';
@@ -951,8 +963,10 @@ function setMode(mode, { save = false } = {}) {
 
   // Thinking depth, temperature and token ceiling are API Key settings: the
   // ChatGPT route cannot accept them, so they are not shown for it.
-  el.cfgThinkingWrap.classList.toggle('hidden', isCg);
-  el.cfgAdvApi.classList.toggle('hidden', isCg);
+  const apiShown = !isCg || backupOn;
+  el.cfgThinkingWrap.classList.toggle('hidden', !apiShown);
+  el.cfgAdvApi.classList.toggle('hidden', !apiShown);
+  updateBackupHint();
 
   renderConnectionPill();
 
@@ -965,6 +979,18 @@ function setMode(mode, { save = false } = {}) {
       .catch(() => {});
     if (save && modeChoice !== activeMode()) persistMode();
   }
+}
+
+/** Say so when the backup is on but cannot work yet. */
+function updateBackupHint() {
+  const missing = [];
+  if (!el.cfgPrimaryBaseUrl.value.trim()) missing.push('API Base URL');
+  if (!el.cfgApiKey.value.trim() && !(cfg && cfg.hasApiKey)) missing.push('API Key');
+  if (!el.cfgModel.value.trim()) missing.push('Model ID');
+  el.cfgBackupHint.textContent =
+    modeChoice === CONNECTION_MODE.CHATGPT && el.cfgApiFallback.checked && missing.length
+      ? `Backup is not active yet. Fill in: ${missing.join(', ')}.`
+      : '';
 }
 
 /** Save just the method, for the Settings pane where the choice is the edit. */
@@ -1480,6 +1506,8 @@ function renderConfig(c) {
   el.cfgContextMessages.value = String(c.contextMessages);
   el.cfgThinking.value = c.thinking;
 
+  el.cfgApiFallback.checked = c.apiFallback === true;
+
   setLengthControl(c.replyLength);
   // The mode the form shows comes from storage on every re-render, exactly like
   // every other field. Both methods' values are sent to this page at once, so
@@ -1525,6 +1553,7 @@ function readConfigForm() {
     contextMessages: Number(el.cfgContextMessages.value),
     thinking: el.cfgThinking.value,
     chatgptModel: el.cfgCgModel.value,
+    apiFallback: el.cfgApiFallback.checked,
     helperUrl: el.cfgHelperUrl.value.trim(),
   };
   const key = el.cfgApiKey.value.trim();
@@ -1765,7 +1794,7 @@ async function onGenerate() {
     // belongs to the reply that now has to be reviewed against it.
     insOpen = false;
     await renderInstruction();
-    setStatus('✓ Ready', 'ready');
+    setStatus(res.apiBackup ? '✓ Ready · API Key backup' : '✓ Ready', 'ready');
     refreshSendButtons();
     el.reply.focus();
   });
@@ -1992,7 +2021,8 @@ el.btnConn.addEventListener('click', () => {
   el.settings.classList.remove('hidden');
   el.btnSettings.setAttribute('aria-expanded', 'true');
   el.cfgModes.scrollIntoView({ block: 'start' });
-  refreshChatGptStatus({ quiet: true }).catch(() => {});
+  // Opening ChatGPT settings is a reason to look; an API-only user gets no probe.
+  if (modeChoice === CONNECTION_MODE.CHATGPT) refreshChatGptStatus({ quiet: true }).catch(() => {});
 });
 
 
@@ -2051,6 +2081,8 @@ el.suCgSignOut.addEventListener('click', () => onChatGptSignOut(el.suCgSignOut))
 el.cfgCgSignOut.addEventListener('click', () => onChatGptSignOut(el.cfgCgSignOut));
 el.suCgRefresh.addEventListener('click', () => onChatGptRefreshModels(el.suCgRefresh));
 el.cfgCgRefresh.addEventListener('click', () => onChatGptRefreshModels(el.cfgCgRefresh));
+el.cfgApiFallback.addEventListener('change', () => setMode(modeChoice, { save: false }));
+for (const input of [el.cfgPrimaryBaseUrl, el.cfgApiKey, el.cfgModel]) input.addEventListener('input', updateBackupHint);
 el.cfgCgTest.addEventListener('click', () => onChatGptTestRequest(el.cfgCgTest));
 el.suCgSave.addEventListener('click', () => run(el.suCgSave, 'setup-save', onSetupSave));
 

@@ -193,6 +193,8 @@ function mergeConfig(defaults, incoming) {
       if (Number.isFinite(num)) out[key] = num;
     } else if (typeof defaults[key] === 'string') {
       if (typeof v === 'string') out[key] = v;
+    } else if (typeof defaults[key] === 'boolean') {
+      if (typeof v === 'boolean') out[key] = v;
     }
   }
   return out;

@@ -37,6 +37,8 @@ class HelperError extends Error {
     this.detail = opts.detail || '';
     this.requestId = opts.requestId || '';
     this.retryable = !!opts.retryable;
+    /** True when reply text had already started streaming; the request must not be repeated elsewhere. */
+    this.partialOutput = !!opts.partialOutput;
   }
 
   /** The JSON body the local API returns for this failure. */
@@ -52,6 +54,7 @@ class HelperError extends Error {
       detail: this.detail,
       requestId: this.requestId,
       retryable: this.retryable,
+      partialOutput: this.partialOutput,
     };
   }
 }

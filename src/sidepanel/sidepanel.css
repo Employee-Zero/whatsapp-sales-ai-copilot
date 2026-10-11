@@ -1548,3 +1548,29 @@ a.btn-link.primary:hover {
     opacity: 0.25;
   }
 }
+
+.backup-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.check input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
+.backup-warn {
+  color: var(--warn);
+}

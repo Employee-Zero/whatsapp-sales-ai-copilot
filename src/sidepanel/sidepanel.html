@@ -64,8 +64,8 @@
         </p>
 
         <div id="su-modes" class="seg modes" role="group" aria-label="How to connect">
-          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key</span></button>
           <button class="seg-btn" type="button" data-mode="chatgpt"><span class="seg-label">ChatGPT</span></button>
+          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key only</span></button>
         </div>
         <p id="su-mode-hint" class="hint"></p>
 
@@ -226,8 +226,8 @@
         <!-- 1. AI Connection -->
         <div class="conn-head">AI Connection</div>
         <div id="cfg-modes" class="seg modes" role="group" aria-label="AI Connection">
-          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key</span></button>
           <button class="seg-btn" type="button" data-mode="chatgpt"><span class="seg-label">ChatGPT</span></button>
+          <button class="seg-btn" type="button" data-mode="apiKey"><span class="seg-label">API Key only</span></button>
         </div>
         <p id="cfg-mode-hint" class="hint"></p>
 
@@ -278,6 +278,16 @@
           </div>
           <input id="cfg-helperUrl" type="hidden" />
           <div id="cg-test-result" class="test-result hidden"></div>
+        </div>
+
+        <!-- ChatGPT is the primary route; the API Key below is an opt-in backup. -->
+        <div id="cfg-backup-row" class="backup-row">
+          <label class="check">
+            <input id="cfg-apiFallback" type="checkbox" />
+            <span>Use API Key as backup</span>
+          </label>
+          <p class="hint">Only if ChatGPT runs out of allowance or is temporarily unavailable. Your conversation is then sent to your API provider.</p>
+          <p id="cfg-backup-hint" class="hint backup-warn"></p>
         </div>
 
         <div id="cfg-apikey" class="pane">

@@ -368,6 +368,12 @@ const DEFAULT_AI_CONFIG = Object.freeze({
    * replaced the other one's answer.
    */
   chatgptModel: '',
+  /**
+   * Opt-in: when ChatGPT is the primary route and it is temporarily unavailable,
+   * send the request to the API Key provider instead. OFF by default — turning it
+   * on is what authorises conversation text going to a second provider.
+   */
+  apiFallback: false,
   /** Where the local helper listens. See CHATGPT_HELPER_DEFAULT_URL. */
   helperUrl: CHATGPT_HELPER_DEFAULT_URL,
   temperature: 0.4,

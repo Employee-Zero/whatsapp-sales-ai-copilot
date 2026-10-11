@@ -236,7 +236,7 @@ async function opGenerateReply() {
     throw e;
   }
 
-  return { text: result.text, context };
+  return { text: result.text, context, apiBackup: !!result.usedApiBackup };
 }
 
 /**

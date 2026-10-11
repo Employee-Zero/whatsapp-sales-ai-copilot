@@ -16,6 +16,7 @@ import {
   AI_LIMITS,
   STORAGE_KEYS,
   ERR,
+  REQUIRED_AI_FIELDS,
   FALLBACK_ELIGIBLE,
   AI_CONFIG_NUMBER_RANGES,
   AI_FIELD_LABELS,
@@ -138,6 +139,7 @@ async function saveAiConfig(partial) {
   next.fallbackBaseUrl = normalizeBaseUrl(next.fallbackBaseUrl);
   next.model = String(next.model || '').trim();
   next.connectionMode = connectionModeOf(next);
+  next.apiFallback = next.apiFallback === true;
   next.chatgptModel = String(next.chatgptModel || '').trim();
   next.helperUrl = helperBaseUrl(next);
   next.replyLength = oneOf(next.replyLength, REPLY_LENGTH_SPECS, REPLY_LENGTH.MEDIUM);
@@ -200,6 +202,7 @@ function publicConfig(cfg) {
      */
     connectionMode: mode,
     chatgptModel: cfg.chatgptModel,
+    apiFallback: cfg.apiFallback === true,
     helperUrl: cfg.helperUrl,
     primaryBaseUrl: cfg.primaryBaseUrl,
     fallbackBaseUrl: cfg.fallbackBaseUrl,
@@ -575,22 +578,71 @@ async function generateReply(ctx) {
   }
 
   const baseBudget = resolveMaxTokens(cfg);
+  const prompt = Object.assign({}, ctx, { transcript });
 
-  // The two methods share everything above this line — the config read, the
-  // configuration gate, the context window, the prompt assembly — and nothing
-  // below it. That split is deliberate: the prompt a salesperson tunes is the
-  // same prompt on either path, and only the transport differs.
-  if (connectionModeOf(cfg) === CONNECTION_MODE.CHATGPT) {
-    log('Calling ChatGPT plan', `model=${cfg.chatgptModel}`, `helper=${helperBaseUrl(cfg)}`, `length=${cfg.replyLength}`);
-    const out = await chatgptGenerate(cfg, {
-      instructions: systemPromptFor(cfg) + instructionBlock(ctx.instruction),
-      input: buildUserPrompt(Object.assign({}, ctx, { transcript }), cfg),
-      timeoutMs: cfg.timeoutMs,
-    });
-    log('ChatGPT plan completed', `${out.elapsedMs}ms`);
-    return { text: out.text, model: out.model, usage: out.usage, elapsedMs: out.elapsedMs, usedFallback: false };
+  // Routing is a pure function of the stored config: no probe of the Connector,
+  // no network check, no model refresh before a request. An API-only install
+  // goes straight to its provider.
+  if (routeOf(cfg) === ROUTE.CHATGPT) {
+    try {
+      log('Calling ChatGPT plan', `model=${cfg.chatgptModel}`, `length=${cfg.replyLength}`);
+      const out = await chatgptGenerate(cfg, {
+        instructions: systemPromptFor(cfg) + instructionBlock(ctx.instruction),
+        input: buildUserPrompt(prompt, cfg),
+        timeoutMs: cfg.timeoutMs,
+      });
+      log('ChatGPT plan completed', `${out.elapsedMs}ms`);
+      return { text: out.text, model: out.model, usage: out.usage, elapsedMs: out.elapsedMs, usedFallback: false, usedApiBackup: false };
+    } catch (err) {
+      if (!canUseApiBackup(cfg, err)) throw err;
+      log('ChatGPT unavailable', String(err && err.code), '— using the API Key backup the user enabled');
+      const backup = await generateViaApi(cfg, ctx, transcript, baseBudget);
+      return Object.assign(backup, { usedApiBackup: true });
+    }
   }
 
+  return Object.assign(await generateViaApi(cfg, ctx, transcript, baseBudget), { usedApiBackup: false });
+}
+
+/** The two places a request can go. */
+const ROUTE = Object.freeze({ CHATGPT: 'chatgpt', API: 'api' });
+
+/**
+ * Which route a request takes, from the saved config alone (synchronous; never
+ * touches the network).
+ *
+ * @param {object} cfg
+ * @returns {'chatgpt'|'api'}
+ */
+function routeOf(cfg) {
+  return connectionModeOf(cfg) === CONNECTION_MODE.CHATGPT ? ROUTE.CHATGPT : ROUTE.API;
+}
+
+/** Failures after which, and only which, the API Key backup may take over. */
+const BACKUP_ELIGIBLE_CODES = Object.freeze([ERR.CHATGPT_USAGE_LIMIT, ERR.CHATGPT_UNAVAILABLE, ERR.HELPER_UNREACHABLE]);
+
+/**
+ * May this ChatGPT failure be retried on the API Key provider?
+ *
+ * Only when ALL hold: the user turned the backup on; the API fields are complete;
+ * the failure is one of allowance exhausted / service temporarily unavailable /
+ * Connector unreachable; and no reply text had started streaming. Sign-in,
+ * eligibility and configuration problems are the user's to fix and must not
+ * silently send the conversation to another provider.
+ *
+ * @param {object} cfg
+ * @param {any} err
+ * @returns {boolean}
+ */
+function canUseApiBackup(cfg, err) {
+  if (!cfg || cfg.apiFallback !== true) return false;
+  if (REQUIRED_AI_FIELDS.some((k) => !String(cfg[k] == null ? '' : cfg[k]).trim())) return false;
+  if (!err || err.partialOutput === true) return false;
+  return BACKUP_ELIGIBLE_CODES.includes(err.code);
+}
+
+/** The API Key path: build the messages, call the provider, retry once on an empty/cut-off reply. */
+async function generateViaApi(cfg, ctx, transcript, baseBudget) {
   log(
     'Calling AI',
     `model=${cfg.model}`,
@@ -828,6 +880,8 @@ export {
   systemPromptFor,
   reasoningTokens,
   loadAiConfig,
+  routeOf,
+  canUseApiBackup,
   saveAiConfig,
   seedAiConfigIfMissing,
   publicConfig,

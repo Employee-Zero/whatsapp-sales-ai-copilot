@@ -15,6 +15,7 @@ Nothing yet.
 
 - **ChatGPT Connector for Sales AI Copilot**: the macOS (Apple Silicon) installer for the ChatGPT method, as a `.pkg` with a one-click **Download for Mac** in the extension. Shown in Login Items by name through a minimal background app bundle. Not Developer ID signed or notarized.
 - Three-step ChatGPT setup in the panel (Install, Allow Local Access, Connect) with live status badges and a **Recheck** button.
+- **ChatGPT first, API Key as an opt-in backup.** Routing is decided from saved settings only — an API-only install sends every reply straight to its provider and never contacts the Connector. With ChatGPT as primary, the API Key is used only if you turn on *Use API Key as backup* (off by default) and only when ChatGPT is out of allowance, temporarily unavailable or unreachable, and never after reply text has started streaming.
 - Brand icons, single-page Settings, tip field, received/sent counts, **Reload**.
 
 ### Fixed
