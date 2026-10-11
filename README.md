@@ -1,47 +1,73 @@
-# WhatsApp Sales AI Copilot
+# WhatsApp Sales AI Copilot — Chrome Extension
 
-**Better WhatsApp replies. Less typing.**
+**Stop rereading chats. Let AI handle your sales follow-ups.**
 
-A free, open-source Chrome extension that helps salespeople write replies and follow up with customers, right inside WhatsApp Web.
+An open-source Chrome extension that helps salespeople understand past WhatsApp conversations and generate relevant replies and follow-ups — without copying and pasting.
 
-**[Download the extension ↓](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)** · [Quick installation guide](docs/GETTING_STARTED.md)
+**[Download Extension](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)** · **[Installation Guide](docs/GETTING_STARTED.md)**
 
-<a href="docs/assets/04-generated-draft.png"><img src="docs/assets/04-generated-draft.png" alt="AI reply draft in the WhatsApp Sales AI Copilot side panel (demo)" width="340"></a>
+<table>
+<tr>
+<td align="center"><a href="docs/assets/04-generated-draft.png"><img src="docs/assets/04-generated-draft.png" alt="AI-generated sales reply (demo conversation)" width="210"></a><br><sub>AI Replies</sub></td>
+<td align="center"><a href="docs/assets/05-per-chat-instruction.png"><img src="docs/assets/05-per-chat-instruction.png" alt="Custom instruction for a customer (demo)" width="210"></a><br><sub>Custom Instructions</sub></td>
+<td align="center"><a href="docs/assets/06-followup-confirmation.png"><img src="docs/assets/06-followup-confirmation.png" alt="Follow-up send confirmation (demo)" width="210"></a><br><sub>Follow-ups</sub></td>
+</tr>
+</table>
 
-*Demo conversation — no real customer data.*
+*Real extension screenshots with fictional conversations. Click an image to enlarge.*
 
-## What can it do?
+## Why We Built This
 
-- **Write replies using chat context** — based on the messages currently loaded in WhatsApp Web.
-- **Help with sales follow-ups** — without awkward, generic check-ins.
-- **Reply in the customer's language** when it's clear from the conversation.
-- **Make replies your own** — choose Short / Medium / Long, add a note for a specific customer, or edit the draft.
-- **Send when you're ready** — review and click **Send**. An optional **Follow-up & Send** action sends without preview, with an explicit confirmation first.
+In B2B sales, customer conversations pile up quickly.
 
-## Get started
+When you follow up weeks or months later, it's easy to forget what the customer needed, what you discussed, or where you left off.
 
-1. **[Download the latest ZIP](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)** and extract it. Keep the extracted folder.
-2. Open `chrome://extensions` in Chrome, enable **Developer mode**, click **Load unpacked**, and select that folder.
-3. Open [WhatsApp Web](https://web.whatsapp.com), then open the extension's side panel.
-4. Add your own **API Base URL**, **API Key**, and **Model ID**. Click **Test Connection**, then **Save & Continue**.
-5. Open a customer chat → **Generate Reply** → review or edit → **Send**.
+AI made writing replies easier, but repeatedly copying WhatsApp conversations into AI tools was still slow and frustrating.
 
-**[Step-by-step guide with pictures →](docs/GETTING_STARTED.md)**
+**That's why we built this extension — to bring AI directly into WhatsApp Web and eliminate the endless copy-paste.**
 
-<a href="docs/assets/01-first-run-setup.png"><img src="docs/assets/01-first-run-setup.png" alt="First-time AI setup screen (demo)" width="320"></a>
+## What It Does
 
-## Bring your own AI
+**1. Read Conversations in One Click**
 
-You need an API key from a provider with an **OpenAI-compatible Chat Completions API**. This extension does **not** include an AI service or API credits. Your provider may charge for usage. The fallback API URL is optional.
+Capture messages from your current WhatsApp Web conversation. Need more history? Simply scroll up to load older messages before generating a reply.
 
-## Privacy & limitations
+**2. Customize AI for Your Business**
 
-Your conversation text is sent to **the AI provider you configure** when you request a reply. Your API key and drafts are stored in your Chrome extension storage. Use the tool only when appropriate for your customers' data and your company's policies. [Read the privacy details](PRIVACY.md).
+Set your own AI prompt to match your industry, products, and sales style. Add specific instructions for individual customers.
 
-This is **not** a bulk messenger, scheduled follow-up system, or CRM. It reads the current loaded text conversation, not every historical message or attachment. It is an independent project, **not affiliated with WhatsApp or Meta**.
+**3. Generate Better Replies and Follow-ups**
 
-## Help & development
+Create natural, context-aware replies based on your conversations. Choose the length, edit the draft, and send when you're ready.
 
-[Installation help](docs/GETTING_STARTED.md) · [Report an issue](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/issues) · [For developers](docs/DEVELOPMENT.md) · [Contribute](CONTRIBUTING.md) · [Security](SECURITY.md)
+**Less reading. Less copying. More selling.**
 
-MIT License · [Employee Zero](https://github.com/Employee-Zero)
+## Get Started
+
+1. **Download** the latest ZIP and unzip it.
+2. **Install** it in Chrome: `chrome://extensions` → Developer mode → Load unpacked.
+3. **Connect your AI** using your API Base URL, API Key, and Model ID.
+4. **Start replying** — open a WhatsApp conversation, generate a reply, review, and send.
+
+**[Step-by-Step Installation Guide →](docs/GETTING_STARTED.md)**
+
+## AI Setup & Cost
+
+**The extension is free and open source. AI replies require your own API key.**
+
+Connect an OpenAI-compatible AI provider of your choice. Your provider may charge for API usage.
+
+New to AI APIs? Our [Installation Guide](docs/GETTING_STARTED.md#step-3--connect-your-ai) explains how to get an API key and set everything up.
+
+*Note: A ChatGPT subscription does not include API credits.*
+
+## Good to Know
+
+- Chat messages are sent to your chosen AI provider when you generate a reply.
+- Only messages currently loaded in WhatsApp Web are available to the extension.
+- No CRM integration, bulk messaging, or scheduled follow-ups.
+- This is an independent open-source project, not affiliated with WhatsApp or Meta.
+
+[Privacy](PRIVACY.md) · [For Developers](docs/DEVELOPMENT.md) · [Report an Issue](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/issues) · [MIT License](LICENSE)
+
+**Employee Zero — Your first employee isn't human.**
