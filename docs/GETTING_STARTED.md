@@ -1,310 +1,92 @@
-# Getting started
+# Getting Started
 
-A step-by-step install guide for **WhatsApp Sales AI Copilot**, written for
-people who have never used a Terminal, GitHub, or Node.js. If you can install a
-program and follow six clicks, you can do this.
+Install **WhatsApp Sales AI Copilot** in four steps. No coding required.
 
-Total time: about ten minutes, most of which is signing up with an AI provider.
+**You'll need:** Google Chrome, WhatsApp Web, and an API key from an AI provider.
 
-**Contents**
+## Step 1 — Download
 
-1. [Before you start](#1-before-you-start)
-2. [Download it](#2-download-it)
-3. [Unzip it — and keep the folder](#3-unzip-it--and-keep-the-folder)
-4. [Load it into Chrome](#4-load-it-into-chrome)
-5. [About the warning Chrome shows you](#5-about-the-warning-chrome-shows-you)
-6. [Pin it where you can find it](#6-pin-it-where-you-can-find-it)
-7. [Connect your AI provider](#7-connect-your-ai-provider)
-8. [Your first reply](#8-your-first-reply)
-9. [Updating to a new version](#9-updating-to-a-new-version)
-10. [If something goes wrong](#10-if-something-goes-wrong)
-11. [Uninstalling](#11-uninstalling)
+1. Open the **[latest release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)**.
+2. Under **Assets**, download the extension ZIP file. Do **not** download the files labeled "Source code".
+3. Unzip the file and keep the extracted folder somewhere permanent, such as Documents.
 
----
+*You do not need a GitHub account to download the extension.*
 
-## 1. Before you start
+## Step 2 — Install in Chrome
 
-You need three things:
-
-| | |
-|---|---|
-| **Google Chrome** | The browser. If you're reading this in Chrome, you have it. |
-| **WhatsApp Web** | Already signed in on this computer. Open [web.whatsapp.com](https://web.whatsapp.com) and check you can see your chats. |
-| **An AI provider account** | This is the one part that costs money. You'll need an API key. See [step 7](#7-connect-your-ai-provider). |
-
-You do **not** need: Node.js, Git, a Terminal, a server, or an account with us.
-
-> **A note about "Developer mode".** Installing this extension means turning on a
-> Chrome setting called Developer mode. It sounds more serious than it is — it
-> just tells Chrome "let me install things that didn't come from the Web Store".
-> You can leave it on. It doesn't change how Chrome behaves otherwise.
-
----
-
-## 2. Download it
-
-Go to the **[Releases page](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)**
-and find the newest release at the top. Under **Assets**, click the file ending
-in **`.zip`**.
-
-![The Chrome extensions page with the extension installed](assets/00-chrome-extensions.png)
-
-*You'll see this page again in step 4 — the extension listed there, already working.*
-
-*Every screenshot in this guide is a demonstration with invented details: a
-fictional contact, a fictional company and a reserved `555` phone number. No real
-customer's conversation appears in any of them — the README explains how they are
-produced.*
-
-Your browser will download the ZIP to your Downloads folder.
-
----
-
-## 3. Unzip it — and keep the folder
-
-Find the ZIP in your Downloads folder and **double-click it** (Windows: right-click
-→ *Extract All*). You'll get a folder named something like
-`whatsapp-sales-ai-copilot-0.1.0`.
-
-**Move that folder somewhere permanent before you go on.** Your Documents folder
-is a good place. Desktop is fine too.
-
-> ### This part matters
->
-> Chrome does not copy the extension anywhere. It reads it from that folder
-> **every time Chrome starts**. So:
->
-> - **Don't delete the folder** after installing.
-> - **Don't move it** to a different place later — if you do, the extension
->   disappears and you'll need to load it again (step 4).
-> - **Don't put it in Downloads** if you regularly empty Downloads.
->
-> If you already have an older version installed, you can replace the contents of
-> the folder with the new version — see [step 9](#9-updating-to-a-new-version).
-> Your settings and API key are kept either way.
-
----
-
-## 4. Load it into Chrome
-
-1. Open a new tab and type this into the address bar, then press Enter:
-
-   ```
-   chrome://extensions
-   ```
-
-2. In the **top-right corner** of that page there's a switch called
-   **Developer mode**. Turn it **on**.
-
-   The page changes: a toolbar appears at the top with *Load unpacked*, *Pack
-   extension*, and *Update*.
-
+1. Open Chrome and go to `chrome://extensions`.
+2. Turn on **Developer mode** in the top-right corner.
 3. Click **Load unpacked**.
+4. Select the extracted folder containing `manifest.json`.
 
-4. A file browser opens. Navigate to the folder from step 3 — the one containing
-   a file called `manifest.json` — and select the **folder itself** (not a file
-   inside it). Click **Select** / **Open**.
+<a href="assets/00-chrome-extensions.png"><img src="assets/00-chrome-extensions.png" alt="Chrome Extensions page in English: enable Developer mode, then click Load unpacked" width="780"></a>
 
-5. The extension appears on the page as a card: **WhatsApp Sales AI Copilot**,
-   version `0.1.0`, with a blue toggle switched on.
+The extension is now installed. You can pin its icon to the Chrome toolbar for easy access.
 
-You're done installing. Chrome will now offer you a warning — read the next
-section before you dismiss it.
+## Step 3 — Connect Your AI
 
----
+The extension needs an AI service to generate replies.
 
-## 5. About the warning Chrome shows you
+**What is an API key?**
 
-Chrome may show a popup or a yellow banner saying something like
-*"Disable developer mode extensions"*, and the extension's card may carry a
-warning triangle.
+An API key is a private code that allows this extension to connect to an AI provider. It's different from your ChatGPT login or subscription.
 
-**This is expected, and here is exactly what it means.**
+If you don't have one yet:
 
-Chrome shows that warning for **every extension that wasn't installed from the
-Chrome Web Store**. It is not a virus scan result. Chrome has not inspected this
-code and found a problem — Chrome simply can't vouch for extensions it hasn't
-reviewed, so it tells you so and lets you decide.
+1. Choose an AI provider that supports an **OpenAI-compatible API**.
+2. Create an API account and generate a key from the provider's dashboard.
+3. Find the provider's **API Base URL** and **Model ID** in its documentation.
 
-What that means for you in practice:
+Open [WhatsApp Web](https://web.whatsapp.com), then click the extension icon.
 
-- **Chrome will nag you about it occasionally**, especially at startup. Click
-  *Keep* / *Cancel* on the popup — never *Disable* — and it will leave you alone
-  for a while.
-- **Chrome will not update it for you.** Extensions from the Web Store update
-  silently; this one can't. See [step 9](#9-updating-to-a-new-version).
-- **You should satisfy yourself that you trust the source.** That's true of any
-  software you install outside a store. The code is public and readable, and
-  [PRIVACY.md](../PRIVACY.md) explains exactly what it reads and where it sends
-  it.
+Enter:
 
-If a button offers to *Disable* or *Remove* the extension, don't click it —
-that's Chrome asking whether you want to undo step 4, not warning you about
-anything it found.
+- **API Base URL** — your provider's API address.
+- **API Key** — your private API key.
+- **Model ID** — the AI model you want to use.
 
----
+Leave **Fallback Base URL** empty unless you need it. Click **Test Connection**, then **Save & Continue**.
 
-## 6. Pin it where you can find it
+<table>
+<tr>
+<td align="center"><a href="assets/01-first-run-setup.png"><img src="assets/01-first-run-setup.png" alt="Enter AI provider details" width="195"></a><br><sub>Enter details</sub></td>
+<td align="center"><a href="assets/02-connect-your-ai.png"><img src="assets/02-connect-your-ai.png" alt="Test the AI connection" width="195"></a><br><sub>Test connection</sub></td>
+<td align="center"><a href="assets/03-what-to-do-next.png"><img src="assets/03-what-to-do-next.png" alt="Complete setup" width="195"></a><br><sub>Continue</sub></td>
+</tr>
+</table>
 
-The extension doesn't do anything until you open its panel, so make it one click
-away:
+**Cost:** The extension is free and open source. Your AI provider may charge for API usage. A ChatGPT subscription does **not** include API credits.
 
-1. Look at the top-right of Chrome, next to your profile picture. Click the
-   **puzzle-piece icon** (Extensions).
-2. Find **WhatsApp Sales AI Copilot** in the list and click the **pin** icon next
-   to it.
-3. The extension's icon now sits in your toolbar.
+**Keep your API key private.** Do not share it with anyone.
 
----
+## Step 4 — Generate Your First Reply
 
-## 7. Connect your AI provider
+1. Open a customer conversation in WhatsApp Web.
+2. Click **Generate Reply**.
+3. Review or edit the AI-generated message.
+4. Click **Send**.
 
-This is the only real setup, and you only do it once.
+<table>
+<tr>
+<td align="center"><a href="assets/04-generated-draft.png"><img src="assets/04-generated-draft.png" alt="AI-generated reply and draft" width="225"></a><br><sub>Generate and edit</sub></td>
+<td align="center"><a href="assets/05-per-chat-instruction.png"><img src="assets/05-per-chat-instruction.png" alt="Optional customer-specific instruction" width="225"></a><br><sub>Optional chat instructions</sub></td>
+</tr>
+</table>
 
-### Get an API key
+You can also choose Short, Medium, or Long replies and add instructions for individual customers.
 
-You need an account with a company that provides AI models, and an API key from
-them. Any provider offering an **OpenAI-compatible API** works — that's most of
-them, including OpenAI, OpenRouter, Together, DeepSeek, Groq, and self-hosted
-setups like Ollama.
+## Need Help?
 
-Sign up with whichever you prefer, add a small amount of credit if they ask for
-it, and find the page called **API keys** (sometimes under *Dashboard* or
-*Settings*). Create a key and copy it. Treat it like a password — it's billed to
-your account.
+**Can't find Load unpacked?** Enable Developer mode first.
 
-While you're there, note down two more things from their documentation:
+**Extension won't load?** Select the folder containing `manifest.json`, not the ZIP file.
 
-- the **Base URL** — looks like `https://api.provider.com/v1`
-- the **model name** you want to use — looks like `gpt-4o-mini`
+**AI connection failed?** Check your API Base URL, API Key, Model ID, and provider account.
 
-> **Which model?** A small, fast model is the right choice to start with. Sales
-> replies don't need the most expensive model, and the cheap ones are usually
-> indistinguishable for this job. You can change it any time.
+**Updating the extension?** Download the latest ZIP, replace the files in the same folder, and click Reload on `chrome://extensions`. Refresh WhatsApp Web afterward.
 
-### Enter them in the panel
+For privacy details, see [PRIVACY.md](../PRIVACY.md).
 
-1. Open [web.whatsapp.com](https://web.whatsapp.com) in Chrome.
-2. Click the extension's icon in your toolbar. The side panel opens on the right
-   of the window.
+*Screenshots show fictional demo data. When you generate a reply, your chat text is sent to your selected AI provider.*
 
-If this is the first time, the panel shows a welcome screen:
-
-![The first-run setup screen](assets/01-first-run-setup.png)
-
-3. Fill in the three fields marked **Required**:
-
-   | Field | What goes in it |
-   |---|---|
-   | **API Base URL** | The provider's address, e.g. `https://api.provider.com/v1` |
-   | **API Key** | The key you copied. Paste it exactly — with or without an `sk-` at the front, both are fine. |
-   | **Model ID** | The model name, exactly as the provider writes it |
-
-   **Fallback Base URL** is optional. Leave it empty unless you have a second
-   provider you want it to try if the first one is unreachable.
-
-4. Click **Test Connection**. It sends one tiny request so you find out now
-   rather than mid-conversation. You'll get either a green confirmation with the
-   model name and response time, or a specific error telling you which field is
-   wrong.
-
-   ![A successful connection test](assets/02-connect-your-ai.png)
-
-5. Click **Save & Continue**.
-
-The panel then shows you the three things left to do — and after that, the
-welcome screen never comes back:
-
-![What to do next](assets/03-what-to-do-next.png)
-
-> **Where do I find these details?** is a fold-out at the bottom of the setup
-> screen with the same instructions as above, in case you're reading this in
-> another window.
->
-> **Changed your mind later?** Click the **gear icon** at the top of the panel at
-> any time to reopen these settings.
-
----
-
-## 8. Your first reply
-
-1. Open WhatsApp Web and **click on a customer's conversation**.
-2. Click the extension icon. The panel picks up the conversation you're looking
-   at — you'll see their name at the top and a count of the messages it can read.
-3. Click **Generate Reply**. A draft appears in the lower box.
-
-   ![A generated draft](assets/04-generated-draft.png)
-
-4. **Read it and change anything you don't like.** It's a normal text box —
-   click in it and type.
-5. Click **Send**.
-
-That's the whole loop. Everything else is refinement:
-
-- **Short / Medium / Long** under the draft box changes how long the reply is.
-- **Add an instruction for this chat** applies only to the customer you're
-  looking at — "ask how the installation went", "she wants the IP66 certificate".
-- The **gear icon** holds the prompt that tells the AI how your company writes.
-  It's worth ten minutes of your time; see the README.
-
----
-
-## 9. Updating to a new version
-
-Chrome won't do this for you.
-
-1. Go to the [Releases page](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)
-   and download the new ZIP.
-2. Unzip it.
-3. **Replace the contents of your existing folder** with the new files — or
-   delete the old folder and put the new one in the same place, then follow
-   step 4 below if the extension shows as broken.
-4. Go to `chrome://extensions` and click the **circular arrow** (↻) on the
-   extension's card. Chrome reloads it from the folder.
-5. Refresh your WhatsApp Web tab.
-
-Your API key, prompt and settings are stored by Chrome, not in that folder, so
-they survive the update.
-
----
-
-## 10. If something goes wrong
-
-**I don't see the "Load unpacked" button.**
-Developer mode isn't on. It's the switch in the top-right of `chrome://extensions`.
-
-**Chrome says "Manifest file is missing or unreadable".**
-You selected a file or a parent folder instead of the folder that contains
-`manifest.json`. Look inside the unzipped folder — if you see another folder with
-the same name, go one level deeper.
-
-**The extension disappeared after I restarted Chrome.**
-The folder was moved, renamed or deleted. Chrome reads the extension from it on
-every start. Put it back and load it again (step 4).
-
-**The panel says "Fill in API Base URL, API Key first".**
-Setup isn't finished. Click the gear icon and complete it.
-
-**"Authentication failed" when I test the connection.**
-Usually the provider account, not the key: no credit, or the key was deleted.
-Check the provider's dashboard.
-
-**"API endpoint invalid".**
-The Base URL is wrong. It should end in `/v1` and should **not** include
-`/chat/completions`.
-
-**A new reply comes back empty.**
-Open the settings and set **Max output tokens** back to `0` (automatic). See the
-Troubleshooting section of the [README](../README.md#10-when-something-goes-wrong).
-
----
-
-## 11. Uninstalling
-
-Go to `chrome://extensions`, find the extension, click **Remove**.
-
-That deletes everything it stored — your API key, your prompt, your drafts. Then
-you can delete the folder.
-
-Removing the extension does **not** touch WhatsApp itself, your chats, or your
-WhatsApp login. Those live in WhatsApp Web and are unaffected.
+[← Back to project home](../README.md)
