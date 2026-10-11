@@ -279,7 +279,9 @@ function buildUserPrompt(ctx, cfg) {
   const lengthSpec = REPLY_LENGTH_SPECS[(cfg && cfg.replyLength) || REPLY_LENGTH.MEDIUM] || REPLY_LENGTH_SPECS.medium;
 
   return [
-    `Current customer: ${ctx.contactName || 'Unknown'}`,
+    // A chat titled with just a phone number is not a name; saying so keeps the
+    // model from greeting someone as "+86 138…".
+    `Current customer: ${/^[+\d\s()-]{6,}$/.test(String(ctx.contactName || '')) ? 'Unknown (only a phone number is shown)' : ctx.contactName || 'Unknown'}`,
     '',
     'Conversation:',
     transcript || '(no messages loaded)',

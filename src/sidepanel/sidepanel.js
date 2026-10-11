@@ -23,7 +23,7 @@
 
 /* global MSG, ERR, PHONE_STATUS, STORAGE_KEYS, DRAFT_LIMITS, INSTRUCTION_LIMITS,
    REPLY_LENGTH_SPECS, THINKING_SPECS, CONTEXT_MESSAGE_CHOICES, AI_FIELD_LABELS,
-   CONNECTION_MODE, CONNECTION_MODE_SPECS, CHATGPT_HELPER_DEFAULT_URL,
+   CONNECTION_MODE, CONNECTION_MODE_SPECS, CHATGPT_HELPER_DEFAULT_URL, CONNECTOR_RELEASE_URL, CONNECTOR_DOWNLOAD_URL,
    describeTextLength, formatPhoneDisplay, phoneFromDisplayName, helperBaseUrl,
    helperStartCommand, log, logError */
 
@@ -41,11 +41,24 @@ const el = {
   suModeHint: $('su-mode-hint'),
   suChatgpt: $('su-chatgpt'),
   suApiKeyPane: $('su-apikey'),
-  suCgStatus: $('su-cg-status'),
-  suCgWhy: $('su-cg-why'),
+  suCgB1: $('su-cg-b1'),
+  suCgB2: $('su-cg-b2'),
+  suCgB3: $('su-cg-b3'),
+  suCgA1: $('su-cg-a1'),
+  suCgDownload: $('su-cg-download'),
+  suCgRecheck: $('su-cg-recheck'),
+  suCgFallback: $('su-cg-fallback'),
+  suCgRelease: $('su-cg-release'),
+  cfgCgB1: $('cfg-cg-b1'),
+  cfgCgB2: $('cfg-cg-b2'),
+  cfgCgB3: $('cfg-cg-b3'),
+  cfgCgA1: $('cfg-cg-a1'),
+  cfgCgDownload: $('cfg-cg-download'),
+  cfgCgRecheck: $('cfg-cg-recheck'),
+  cfgCgFallback: $('cfg-cg-fallback'),
+  cfgCgRelease: $('cfg-cg-release'),
   suCgAllow: $('su-cg-allow'),
   cfgCgAllow: $('cfg-cg-allow'),
-  cfgCgInstall: $('cfg-cg-install'),
   cfgThinkingWrap: $('cfg-thinking-wrap'),
   cfgAdvApi: $('cfg-adv-api'),
   suCgSignIn: $('su-cg-signin'),
@@ -76,7 +89,6 @@ const el = {
   cfgModeHint: $('cfg-mode-hint'),
   cfgChatgpt: $('cfg-chatgpt'),
   cfgApiKeyPane: $('cfg-apikey'),
-  cfgCgStatus: $('cfg-cg-status'),
   cfgCgSignIn: $('cfg-cg-signin'),
   cfgCgSignOut: $('cfg-cg-signout'),
   cfgCgModel: $('cfg-cg-model'),
@@ -417,13 +429,24 @@ function setStatus(text, kind = 'info') {
     return;
   }
 
-  if (kind === 'info' || kind === 'success') {
+  if (kind === 'progress') {
+    // Work in flight. Deliberately has no timer: the previous behaviour cleared
+    // "Generating…" after 4.5 s, so a slow reply left a blank header between the
+    // label vanishing and the text arriving. It stays until replaced.
+    clearBanner();
+    el.replyState.textContent = text;
+    el.replyState.title = text;
+    el.replyState.className = 'reply-state progress';
+    return;
+  }
+
+  if (kind === 'info' || kind === 'success' || kind === 'ready') {
     // Routine progress lives in the AI Reply header, in space that is always
     // there, so the reply box never jumps when it appears or goes away.
     clearBanner();
     el.replyState.textContent = text;
     el.replyState.title = text;
-    el.replyState.className = `reply-state${kind === 'success' ? ' success' : ''}`;
+    el.replyState.className = `reply-state${kind === 'success' || kind === 'ready' ? ' success' : ''}`;
     statusTimer = setTimeout(() => {
       statusTimer = null;
       clearInline();
@@ -823,9 +846,16 @@ async function onSetupTest() {
 
 /** The two panes that show ChatGPT state — first-run and Settings. */
 const CG_PANES = [
-  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, allow: el.suCgAllow, why: el.suCgWhy, refresh: el.suCgRefresh, save: el.suCgSave },
-  { status: el.cfgCgStatus, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, allow: el.cfgCgAllow, install: el.cfgCgInstall, refresh: el.cfgCgRefresh, test: el.cfgCgTest },
+  { b1: el.suCgB1, b2: el.suCgB2, b3: el.suCgB3, a1: el.suCgA1, fallback: el.suCgFallback, recheck: el.suCgRecheck, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, allow: el.suCgAllow, refresh: el.suCgRefresh, save: el.suCgSave },
+  { b1: el.cfgCgB1, b2: el.cfgCgB2, b3: el.cfgCgB3, a1: el.cfgCgA1, fallback: el.cfgCgFallback, recheck: el.cfgCgRecheck, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, allow: el.cfgCgAllow, refresh: el.cfgCgRefresh, test: el.cfgCgTest },
 ];
+
+/** Fill one step badge: a small coloured pill at the end of the step's title row. */
+function setBadge(node, text, kind, title = '') {
+  node.textContent = text;
+  node.title = title;
+  node.className = `cg-badge ${kind}`;
+}
 
 /** How often the panel re-reads the helper's status while a sign-in is open. */
 const SIGN_IN_POLL_MS = 2000;
@@ -849,13 +879,33 @@ async function checkLoopbackPermission() {
   return loopbackGranted;
 }
 
+/**
+ * Recheck: look for the Connector now. A user gesture, so if the local-access
+ * permission is missing Chrome can ask for it first — without it the panel
+ * cannot know whether the Connector runs. Touches nothing else: no reload, no
+ * sign-in, no reply.
+ */
+async function onRecheck(btn) {
+  await run(btn, 'chatgpt-recheck', async () => {
+    if (loopbackGranted !== true) loopbackGranted = await ensureLoopbackPermission();
+    renderChatGptPanes();
+    if (loopbackGranted) await refreshChatGptStatus({ quiet: true });
+  });
+}
+
+// Download for Mac: the real release asset, with the release page as a fallback.
+for (const [dl, rel] of [[el.suCgDownload, el.suCgRelease], [el.cfgCgDownload, el.cfgCgRelease]]) {
+  dl.href = CONNECTOR_DOWNLOAD_URL;
+  rel.href = CONNECTOR_RELEASE_URL;
+}
+
 /** The "Allow local access" button: a user gesture, so Chrome can show its prompt. */
 async function onAllowLocalAccess(btn) {
   await run(btn, 'chatgpt-allow', async () => {
     loopbackGranted = await ensureLoopbackPermission();
     renderChatGptPanes();
     if (!loopbackGranted) {
-      setCgResult('Chrome did not grant local access, so the Helper cannot be found. Press Allow local access to try again.', 'error');
+      setCgResult('Chrome did not grant local access, so ChatGPT Connector cannot be found. Press Allow Access to try again.', 'error');
       return;
     }
     setCgResult('', 'success');
@@ -959,13 +1009,13 @@ function renderConnectionPill() {
     if (!chatgptStatus) {
       label.textContent = 'Checking…';
       pill.classList.add('is-busy');
-      pill.title = 'Asking the local helper for its status.';
+      pill.title = 'Asking ChatGPT Connector for its status.';
       return;
     }
     if (chatgptStatus.helper !== 'running') {
-      label.textContent = 'Helper off';
+      label.textContent = 'Connector off';
       pill.classList.add('is-warn');
-      pill.title = 'The local helper is not running, so your ChatGPT plan cannot be reached.';
+      pill.title = 'ChatGPT Connector is not running, so your ChatGPT plan cannot be reached.';
       return;
     }
     if (!chatgptStatus.signedIn) {
@@ -1055,84 +1105,57 @@ async function refreshChatGptStatus({ quiet = false } = {}) {
 /** Redraw both ChatGPT panes from `chatgptStatus` and `chatgptModels`. */
 function renderChatGptPanes({ resetModels = false } = {}) {
   const s = chatgptStatus;
-  const connected = !!(s && s.helper === 'running' && s.signedIn && s.planScope);
-  const busy = !!(s && (s.signIn === 'pending' || (s.helper === 'running' && s.signedIn && !s.planScope)));
+  const helperUp = !!s && s.helper === 'running';
+  const connected = !!(helperUp && s.signedIn && s.planScope);
+  const busy = !!(s && (s.signIn === 'pending' || (helperUp && s.signedIn && !s.planScope)));
+  const allowed = loopbackGranted === true;
 
   for (const pane of CG_PANES) {
-    if (!pane.status) continue;
+    // Step 1 — the Connector. "Ready" only when it actually answered; without
+    // the local-access permission the panel cannot know, so it says so rather
+    // than claiming it is not installed.
+    if (helperUp) setBadge(pane.b1, '✓ Ready', 'is-ok');
+    else if (!allowed) setBadge(pane.b1, 'Not checked', 'is-idle', 'Allow local access first so the panel can look for it.');
+    else setBadge(pane.b1, 'Not installed', 'is-warn', 'Not detected — it is not installed, or not running.');
+    pane.a1.classList.toggle('hidden', helperUp);
+    pane.fallback.classList.toggle('hidden', helperUp);
 
-    const view = describeChatGptStatus(s);
-    pane.status.textContent = view.text;
-    pane.status.className = `conn-status${view.kind ? ` ${view.kind}` : ''}`;
+    // Step 2 — Chrome's permission for 127.0.0.1.
+    if (allowed) setBadge(pane.b2, '✓ Allowed', 'is-ok');
+    else setBadge(pane.b2, 'Not allowed', 'is-warn');
+    pane.allow.classList.toggle('hidden', allowed);
 
-    // The sign-in button is offered whenever the helper is reachable and there
-    // is no usable account. A stale or wrongly-scoped credential is exactly the
-    // case where signing in again is the fix, so it must not be hidden then.
-    // The button stays visible until connected, but is only enabled once the
-    // Helper has actually been detected: a clickable button that cannot work
-    // would be a lie.
-    const helperUp = !!s && s.helper === 'running';
-    const canSignIn = helperUp && !connected;
-    // The permission comes first: without it the panel cannot even look for the
-    // Helper, so the one useful button is the one that asks for it.
-    if (pane.allow) pane.allow.classList.toggle('hidden', loopbackGranted !== false);
-    if (pane.install) pane.install.classList.toggle('hidden', !(loopbackGranted && !helperUp));
+    // Step 3 — the ChatGPT account.
+    if (connected) {
+      const who = s.label || s.email;
+      setBadge(pane.b3, '✓ Connected', 'is-ok', who ? `Connected as ${who}` : '');
+    } else if (s && s.signIn === 'pending') {
+      setBadge(pane.b3, 'Waiting…', 'is-warn');
+    } else if (helperUp && s.signedIn && !s.planScope) {
+      setBadge(pane.b3, 'Plan access needed', 'is-bad', 'Sign out and sign in again, accepting the plan permissions.');
+    } else if (s && s.signIn === 'error') {
+      setBadge(pane.b3, 'Failed', 'is-bad', s.signInError || '');
+    } else {
+      setBadge(pane.b3, 'Not connected', 'is-idle');
+    }
+
+    // The main button is enabled only when steps 1 and 2 are done, and goes away
+    // once connected. While disabled, the badges above show what is missing.
     pane.signIn.classList.toggle('hidden', connected);
     pane.signIn.classList.toggle('busy', busy);
-    pane.signIn.disabled = busy || !canSignIn;
+    pane.signIn.disabled = busy || !(helperUp && allowed);
+    pane.signIn.title = helperUp && allowed ? '' : 'Finish steps 1 and 2 first.';
+    pane.signOut.classList.toggle('hidden', !(s && s.signedIn));
+
     // Models, refresh, continue and test only make sense after authorisation.
     for (const key of ['refresh', 'save', 'test']) {
       if (pane[key]) pane[key].disabled = !connected;
     }
-    pane.signOut.classList.toggle('hidden', !(s && s.signedIn));
-
-
-    // The "why a Helper" explanation is for someone who has not connected yet.
-    // Once the account is connected it collapses to a single line, and the
-    // expandable "Why the Helper?" below it stays for anyone who wants it back.
-    if (pane.why) pane.why.classList.toggle('hidden', connected);
 
     fillModelSelect(pane.model, resetModels ? (cfg && cfg.chatgptModel) || '' : '', { reset: resetModels });
     if (!connected) pane.model.disabled = true;
     if (pane.modelHint) pane.modelHint.textContent = modelHintText(s);
   }
-}
-
-/**
- * One sentence for the status box.
- *
- * @param {object|null} s
- * @returns {{text: string, kind: string}} kind is '' | 'is-ok' | 'is-warn' | 'is-bad'
- */
-function describeChatGptStatus(s) {
-  if (loopbackGranted === false) {
-    return { text: 'Allow local access so this panel can look for the Helper on this Mac.', kind: 'is-warn' };
-  }
-  if (!s) return { text: 'Checking the local helper…', kind: '' };
-
-  if (s.helper !== 'running') {
-    return {
-      text: 'Helper not detected yet. Install it with the steps below — this line updates by itself once it is running.',
-      kind: 'is-warn',
-    };
-  }
-  if (s.signIn === 'pending') {
-    return { text: 'Waiting for the sign-in tab to finish. Complete the sign-in there — this line updates on its own.', kind: 'is-warn' };
-  }
-  if (s.signIn === 'error') {
-    return { text: `The last sign-in did not finish. ${s.signInError || 'Try again.'}`, kind: 'is-bad' };
-  }
-  if (!s.signedIn) {
-    return { text: 'The helper is running, but no ChatGPT account is connected to it yet.', kind: 'is-warn' };
-  }
-  if (!s.planScope) {
-    return {
-      text: 'Signed in, but this sign-in did not include permission to use your ChatGPT plan. Sign out, sign in again, and accept the plan permissions when asked.',
-      kind: 'is-bad',
-    };
-  }
-  const who = s.label || s.email;
-  return { text: `Connected${who ? ` as ${who}` : ''}. The helper renews this in the background while it runs.`, kind: 'is-ok' };
 }
 
 /**
@@ -1142,11 +1165,8 @@ function describeChatGptStatus(s) {
  * @returns {string}
  */
 function modelHintText(s) {
-  if (!s || s.helper !== 'running') return 'Connect to the local helper to see the models your account can use.';
-  if (!s.signedIn) return 'Sign in to list the models your account can use.';
-  if (!s.planScope) return 'Plan access was not granted, so no models can be listed.';
-  if (!chatgptModels.length) return 'No models loaded yet. Press Refresh models.';
-  return `${chatgptModels.length} model${chatgptModels.length === 1 ? '' : 's'} available to this account.`;
+  const ready = s && s.helper === 'running' && s.signedIn && s.planScope;
+  return ready && !chatgptModels.length ? 'No models loaded yet. Press Refresh Models.' : '';
 }
 
 /**
@@ -1257,7 +1277,7 @@ async function onChatGptSignIn(btn) {
     const granted = await ensureLoopbackPermission();
     if (!granted) {
       setCgResult(
-        'Chrome did not grant access to 127.0.0.1, and without it the extension cannot reach the local helper. Allow access when Chrome asks, or use your own API key instead.',
+        'Chrome did not grant access to 127.0.0.1, and without it the extension cannot reach ChatGPT Connector. Allow access when Chrome asks, or use your own API key instead.',
         'error',
       );
       return;
@@ -1618,7 +1638,7 @@ function describeError(code, fallback, res) {
     // gets its own sentence rather than a shared "connection problem".
     [ERR.HELPER_UNREACHABLE]:
       fallback ||
-      `The local helper is not running. Open a terminal in the folder you installed this extension from and run: ${helperStartCommand(cfg || {})}`,
+      'ChatGPT Connector is not running. Open the ChatGPT section in AI settings to install or recheck it.',
     [ERR.CHATGPT_NOT_SIGNED_IN]:
       'No ChatGPT account is connected yet. Click “Continue with ChatGPT” in AI settings to sign in.',
     [ERR.CHATGPT_NO_PLAN_SCOPE]:
@@ -1633,7 +1653,7 @@ function describeError(code, fallback, res) {
       fallback || 'The request to your ChatGPT plan failed. Check the connection in AI settings and try again.',
     [ERR.HELPER_CONFIG_INVALID]:
       fallback ||
-      'The local helper is running but could not read OpenAI’s sign-in configuration. Check this computer’s internet connection — nothing is wrong with your ChatGPT account.',
+      'ChatGPT Connector is running but could not read OpenAI’s sign-in configuration. Check this computer’s internet connection — nothing is wrong with your ChatGPT account.',
   };
   return map[code] || fallback || `Something went wrong (${code}). Try again.`;
 }
@@ -1663,6 +1683,9 @@ async function run(btn, label, fn) {
     setStatus(describeError(err && err.code, err && err.message), 'error');
   } finally {
     busy = false;
+    // Never leave "Generating…" on screen after the work is over, whichever path
+    // got here.
+    if (el.replyState.classList.contains('progress')) setStatus('');
     if (btn) setBtn(btn, false, false);
     refreshSendButtons();
   }
@@ -1710,10 +1733,11 @@ async function onRead() {
 
 async function onGenerate() {
   await run(el.btnGenerate, 'generate', async () => {
-    setStatus('Generating…');
+    setStatus('Reading…', 'progress');
     // The worker reads the instruction from storage, so anything still sitting
     // in the debounce window has to land there first.
     await flushInstruction();
+    setStatus('Generating…', 'progress');
     const res = await callWorker({ type: MSG.GENERATE_REPLY });
     if (!res.ok) {
       setStatus(describeError(res.code, res.message, res), 'error');
@@ -1741,7 +1765,7 @@ async function onGenerate() {
     // belongs to the reply that now has to be reviewed against it.
     insOpen = false;
     await renderInstruction();
-    setStatus('✓ Ready', 'success');
+    setStatus('✓ Ready', 'ready');
     refreshSendButtons();
     el.reply.focus();
   });
@@ -1759,7 +1783,7 @@ async function onSend() {
       return;
     }
 
-    setStatus('Sending…');
+    setStatus('Sending…', 'progress');
     const res = await callWorker({
       type: MSG.SEND_MESSAGE,
       text,
@@ -1787,7 +1811,7 @@ async function onFollowUpAndSend() {
       return;
     }
 
-    setStatus('Generating…');
+    setStatus('Generating…', 'progress');
     await flushInstruction();
     const res = await callWorker({ type: MSG.FOLLOWUP_AND_SEND });
 
@@ -1850,6 +1874,17 @@ async function onClearKey() {
  */
 async function onTestConnection() {
   await run(el.btnTest, 'test', async () => {
+    // Same rule as the red asterisks: these three are required for this method.
+    if (modeChoice !== CONNECTION_MODE.CHATGPT) {
+      const missing = [];
+      if (!el.cfgPrimaryBaseUrl.value.trim()) missing.push('API Base URL');
+      if (!el.cfgApiKey.value.trim() && !(cfg && cfg.hasApiKey)) missing.push('API Key');
+      if (!el.cfgModel.value.trim()) missing.push('Model ID');
+      if (missing.length) {
+        setTestResult(`Fill in: ${missing.join(', ')}.`, 'error');
+        return;
+      }
+    }
     setTestResult('Testing…', 'success');
     const res = await callWorker({
       type: MSG.TEST_CONNECTION,
@@ -1903,7 +1938,7 @@ async function renderChatGptTestResult(res) {
     `Account: ${res.account || 'signed in'}`,
     `Model: ${res.model}`,
     `Model list: ${res.modelCount} available to this account`,
-    res.helperVersion ? `Helper version: ${res.helperVersion}` : '',
+    res.helperVersion ? `Connector version: ${res.helperVersion}` : '',
     'No request was sent to the model, so this cost nothing of your plan.',
   ].filter(Boolean);
 
@@ -2006,6 +2041,8 @@ for (const [seg, persist] of [
   });
 }
 
+el.suCgRecheck.addEventListener('click', () => onRecheck(el.suCgRecheck));
+el.cfgCgRecheck.addEventListener('click', () => onRecheck(el.cfgCgRecheck));
 el.suCgAllow.addEventListener('click', () => onAllowLocalAccess(el.suCgAllow));
 el.cfgCgAllow.addEventListener('click', () => onAllowLocalAccess(el.cfgCgAllow));
 el.suCgSignIn.addEventListener('click', () => onChatGptSignIn(el.suCgSignIn));

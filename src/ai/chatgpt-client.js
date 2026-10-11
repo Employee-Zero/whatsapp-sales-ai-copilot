@@ -64,10 +64,10 @@ async function callHelper(cfg, path, opts = {}) {
 
   let res;
   try {
-    res = await withTimeout(fetch(url, init), timeoutMs, 'The local helper did not answer in time.');
+    res = await withTimeout(fetch(url, init), timeoutMs, 'ChatGPT Connector did not answer in time.');
   } catch (err) {
     if (err && err.code === ERR.TIMEOUT) {
-      const e = new Error('The local helper did not answer in time.');
+      const e = new Error('ChatGPT Connector did not answer in time.');
       e.code = ERR.CHATGPT_FAILED;
       throw e;
     }
@@ -75,7 +75,7 @@ async function callHelper(cfg, path, opts = {}) {
     // Never include the raw message — it can contain the URL, and on some
     // platforms the whole request.
     logError('helper unreachable at', safeHost(url));
-    const e = new Error(`The local helper is not running. Start it with: ${helperStartCommand(cfg)}`);
+    const e = new Error('ChatGPT Connector is not running. Open the ChatGPT section in AI settings to install or recheck it.');
     e.code = ERR.HELPER_UNREACHABLE;
     e.startCommand = helperStartCommand(cfg);
     e.helperUrl = helperBaseUrl(cfg);
@@ -91,7 +91,7 @@ async function callHelper(cfg, path, opts = {}) {
 
   if (!res.ok) {
     const code = data && typeof data.code === 'string' && KNOWN_HELPER_CODES.includes(data.code) ? data.code : ERR.CHATGPT_FAILED;
-    const e = new Error((data && data.message) || `The local helper returned HTTP ${res.status}.`);
+    const e = new Error((data && data.message) || `ChatGPT Connector returned HTTP ${res.status}.`);
     e.code = code;
     e.status = res.status;
     e.detail = (data && data.detail) || '';
@@ -101,7 +101,7 @@ async function callHelper(cfg, path, opts = {}) {
   }
 
   if (!data || typeof data !== 'object') {
-    const e = new Error('The local helper returned a response this extension could not read.');
+    const e = new Error('ChatGPT Connector returned a response this extension could not read.');
     e.code = ERR.CHATGPT_FAILED;
     throw e;
   }
@@ -221,7 +221,7 @@ async function startSignIn(cfg) {
     // Refuse to open anything that is not OpenAI's own authorization endpoint.
     // This is the one place where a compromised or mis-pointed helper could send
     // the user's browser somewhere harmful.
-    const e = new Error('The local helper did not return an OpenAI sign-in address.');
+    const e = new Error('ChatGPT Connector did not return an OpenAI sign-in address.');
     e.code = ERR.CHATGPT_FAILED;
     throw e;
   }
@@ -345,7 +345,7 @@ async function checkConnection(cfg) {
     return {
       ok: false,
       code: ERR.HELPER_UNREACHABLE,
-      error: 'The local helper is not running.',
+      error: 'ChatGPT Connector is not running.',
       startCommand: status.startCommand,
       helperUrl: status.helperUrl,
     };
@@ -403,7 +403,7 @@ async function checkConnection(cfg) {
     return {
       ok: false,
       code: (err && err.code) || ERR.CHATGPT_FAILED,
-      error: (err && err.message) || 'The helper could not list this account’s models.',
+      error: (err && err.message) || 'ChatGPT Connector could not list this account’s models.',
       helperUrl: status.helperUrl,
     };
   }

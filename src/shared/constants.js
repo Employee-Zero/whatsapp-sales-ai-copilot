@@ -298,6 +298,10 @@ const CONNECTION_MODE_SPECS = Object.freeze({
  */
 const CHATGPT_HELPER_DEFAULT_URL = 'http://127.0.0.1:8788';
 
+/** Where ChatGPT Connector (the macOS installer) is published. */
+const CONNECTOR_RELEASE_URL = 'https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v0.1.2';
+const CONNECTOR_DOWNLOAD_URL = 'https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/download/v0.1.2/ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg';
+
 /** Helper endpoints, relative to its base URL. */
 const CHATGPT_HELPER_PATHS = Object.freeze({
   HEALTH: '/health',
@@ -610,6 +614,8 @@ export {
   CONNECTION_MODE,
   CONNECTION_MODE_SPECS,
   CHATGPT_HELPER_DEFAULT_URL,
+  CONNECTOR_RELEASE_URL,
+  CONNECTOR_DOWNLOAD_URL,
   CHATGPT_HELPER_PATHS,
   CHATGPT_SCOPES,
   CHATGPT_RESOURCE,

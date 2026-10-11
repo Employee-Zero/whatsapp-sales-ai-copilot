@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [0.1.2] - 2026-10-12
+
+### Added
+
+- **ChatGPT Connector for Sales AI Copilot**: the macOS (Apple Silicon) installer for the ChatGPT method, as a `.pkg` with a one-click **Download for Mac** in the extension. Shown in Login Items by name through a minimal background app bundle. Not Developer ID signed or notarized.
+- Three-step ChatGPT setup in the panel (Install, Allow Local Access, Connect) with live status badges and a **Recheck** button.
+- Brand icons, single-page Settings, tip field, received/sent counts, **Reload**.
+
+### Fixed
+
+- The installer failed with `postinstall` not found (not executable).
+- First ChatGPT sign-in now uses the issued client ID for the token exchange; models and Responses request shapes corrected; limited retry for connections reset before TLS.
+- "Generating…" disappeared after 4.5 s on slow replies, before the reply was written.
+
 ## [0.2.0] - 2026-10-11
 
 Connect an AI provider two ways: sign in with a ChatGPT plan, or use your own API key. Both are offered in the first-run setup and in Settings, and switching between them keeps the other one's settings, your per-chat instructions and your drafts.

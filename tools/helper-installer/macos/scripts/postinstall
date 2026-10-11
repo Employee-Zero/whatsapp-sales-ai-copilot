@@ -38,7 +38,13 @@ PLIST="/Library/LaunchAgents/${LABEL}.plist"
 [ -f "$PLIST" ] && /bin/chmod 644 "$PLIST" 2>/dev/null
 [ -d "$PREFIX" ] && /bin/chmod -R go-w "$PREFIX" 2>/dev/null
 [ -f "$PREFIX/runtime/bin/node" ] && /bin/chmod 755 "$PREFIX/runtime/bin/node" 2>/dev/null
-[ -f "$PREFIX/bin/run-helper.sh" ] && /bin/chmod 755 "$PREFIX/bin/run-helper.sh" 2>/dev/null
+APP="$PREFIX/ChatGPT Connector for Sales AI Copilot.app"
+[ -f "$APP/Contents/MacOS/ChatGPT Connector" ] && /bin/chmod 755 "$APP/Contents/MacOS/ChatGPT Connector" 2>/dev/null
+# Versions before 0.1.2 started the job from bin/run-helper.sh; the plist no
+# longer points there, so the old wrapper is removed rather than left behind.
+/bin/rm -f "$PREFIX/bin/run-helper.sh" 2>/dev/null
+/bin/rmdir "$PREFIX/bin" 2>/dev/null
+[ -d "$APP" ] && /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" >/dev/null 2>&1
 
 # ---------------------------------------------------------------------------
 # 2. Start it now, in the session that is actually logged in

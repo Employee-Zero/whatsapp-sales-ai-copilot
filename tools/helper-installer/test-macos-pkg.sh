@@ -36,7 +36,7 @@ done
 case "$PKG_PATH" in --*) PKG_PATH="";; esac
 
 if [ -z "$PKG_PATH" ]; then
-	PKG_PATH="$(/bin/ls -t "${REPO_ROOT}"/dist/whatsapp-sales-ai-copilot-helper-*-macos-arm64.pkg 2>/dev/null | /usr/bin/head -1 || true)"
+	PKG_PATH="$(/bin/ls -t "${REPO_ROOT}"/dist/ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg 2>/dev/null | /usr/bin/head -1 || true)"
 fi
 [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ] || { echo "No package found. Build one first, or pass a path." >&2; exit 1; }
 
@@ -81,8 +81,8 @@ head_ "1. Package structure"
 IDENT="$(/usr/bin/sed -n 's/.* identifier="\([^"]*\)".*/\1/p' "$WORK/expanded/PackageInfo" 2>/dev/null)"
 [ "$IDENT" = "$LABEL" ] && ok "identifier is $LABEL" || bad "identifier is '$IDENT', expected '$LABEL'"
 VERSION="$(/usr/bin/sed -n '/<pkg-info/ s/.* version="\([^"]*\)".*/\1/p' "$WORK/expanded/PackageInfo" 2>/dev/null)"
-PKG_VERSION="$(basename "$PKG_PATH" | /usr/bin/sed -n 's/.*helper-\([0-9.]*\)-macos.*/\1/p')"
-[ "$VERSION" = "$PKG_VERSION" ] && ok "package version is $VERSION" || bad "package version is '$VERSION', filename says '$PKG_VERSION'"
+PKG_VERSION="$(/usr/bin/plutil -extract version raw -o - "${REPO_ROOT}/helper/package.json" 2>/dev/null)"
+[ "$VERSION" = "$PKG_VERSION" ] && ok "package version is $VERSION" || bad "package version is '$VERSION', helper/package.json says '$PKG_VERSION'"
 
 PAYLOAD="$WORK/expanded/Payload"
 for rel in \
@@ -90,7 +90,8 @@ for rel in \
 	"${PREFIX_REL}/helper/siwc-helper.js" \
 	"${PREFIX_REL}/helper/lib/oauth.js" \
 	"${PREFIX_REL}/helper/lib/store.js" \
-	"${PREFIX_REL}/bin/run-helper.sh" \
+	"${PREFIX_REL}/ChatGPT Connector for Sales AI Copilot.app/Contents/MacOS/ChatGPT Connector" \
+	"${PREFIX_REL}/ChatGPT Connector for Sales AI Copilot.app/Contents/Info.plist" \
 	"Library/LaunchAgents/${LABEL}.plist"
 do
 	[ -e "$PAYLOAD/$rel" ] && ok "payload has $rel" || bad "payload is missing $rel"
@@ -98,8 +99,10 @@ done
 
 # The uninstaller relies on this path in its --sign-out step; if the shebang line
 # or the layout ever changes, the failure would only show up at uninstall time.
-[ -x "$PAYLOAD/${PREFIX_REL}/bin/run-helper.sh" ] && ok "run-helper.sh is executable" || bad "run-helper.sh is not executable"
-/usr/bin/grep -q 'bin/node' "$PAYLOAD/${PREFIX_REL}/bin/run-helper.sh" && ok "run-helper.sh invokes the bundled runtime" || bad "run-helper.sh does not invoke the bundled runtime"
+WRAP="$PAYLOAD/${PREFIX_REL}/ChatGPT Connector for Sales AI Copilot.app/Contents/MacOS/ChatGPT Connector"
+[ -x "$WRAP" ] && ok "app bundle executable is executable" || bad "app bundle executable is not executable"
+[ "$(/usr/bin/plutil -extract CFBundleName raw -o - "$PAYLOAD/${PREFIX_REL}/ChatGPT Connector for Sales AI Copilot.app/Contents/Info.plist" 2>/dev/null)" = "ChatGPT Connector for Sales AI Copilot" ] && ok "bundle name is ChatGPT Connector for Sales AI Copilot" || bad "bundle name is wrong"
+/usr/bin/grep -q 'bin/node' "$WRAP" && ok "wrapper invokes the bundled runtime" || bad "wrapper does not invoke the bundled runtime"
 
 PLIST="$PAYLOAD/Library/LaunchAgents/${LABEL}.plist"
 /usr/bin/plutil -lint "$PLIST" >/dev/null 2>&1 && ok "LaunchAgent plist is a valid plist" || bad "LaunchAgent plist does not lint"
@@ -274,7 +277,7 @@ else
 	LSBX="$WORK/launchd-sandbox"
 	mkdir -p "$LSBX"
 	cp -R "$SANDBOX/." "$LSBX/"
-	/usr/bin/sed -i '' "s|/usr/local/lib/whatsapp-sales-ai-copilot|${LSBX}|g" "$LSBX/bin/run-helper.sh"
+	/usr/bin/sed -i '' "s|/usr/local/lib/whatsapp-sales-ai-copilot|${LSBX}|g" "$LSBX/ChatGPT Connector for Sales AI Copilot.app/Contents/MacOS/ChatGPT Connector"
 
 	TEST_PLIST="$WORK/${TEST_LABEL}.plist"
 	/usr/bin/sed -e "s|${LABEL}|${TEST_LABEL}|g" -e "s|/usr/local/lib/whatsapp-sales-ai-copilot|${LSBX}|g" "$PLIST" > "$TEST_PLIST"

@@ -1383,3 +1383,168 @@ button.quick .txt small {
 .reply-state.success {
   color: var(--ok);
 }
+
+/* ChatGPT setup: three numbered steps, each with a small status badge at the end
+   of its title row. */
+.cg-req {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cg-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cg-step {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cg-step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.cg-step-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.cg-num {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.cg-badge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+  background: #f1f5f4;
+}
+
+.cg-badge.is-ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: var(--ok-border);
+}
+
+.cg-badge.is-warn {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+}
+
+.cg-badge.is-bad {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+}
+
+.cg-actions .btn-link {
+  flex: 1.4 1 0;
+}
+
+.cg-fallback {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* The download button is an <a>, styled as the primary button. */
+a.btn-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+a.btn-link.primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(14, 138, 107, 0.25);
+}
+
+a.btn-link.primary:hover {
+  background: var(--accent-dark);
+}
+
+.hint:empty {
+  display: none;
+}
+
+/* Required-field marker: a small red asterisk after the label. */
+.req-star {
+  color: #d93025;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+/* Work in flight: brand-green, bold, with a small dot. */
+.reply-state.progress,
+.reply-state.success {
+  font-weight: 650;
+}
+
+.reply-state.progress {
+  color: var(--accent-dark);
+}
+
+.reply-state.progress::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reply-state.progress::before {
+    animation: reply-pulse 1.1s ease-in-out infinite;
+  }
+}
+
+@keyframes reply-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}

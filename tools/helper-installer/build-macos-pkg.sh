@@ -6,7 +6,8 @@
 #
 #   /usr/local/lib/whatsapp-sales-ai-copilot/runtime/bin/node   a real Node.js
 #   /usr/local/lib/whatsapp-sales-ai-copilot/helper/…           the helper source
-#   /usr/local/lib/whatsapp-sales-ai-copilot/bin/run-helper.sh  how launchd starts it
+#   /usr/local/lib/whatsapp-sales-ai-copilot/ChatGPT Connector for Sales AI Copilot.app
+#                                                  how launchd starts it (shown by name in Login Items)
 #   /Library/LaunchAgents/com.employeezero….helper.plist        start at every login
 #
 # and then starts the helper in the session of the logged-in user. The person
@@ -65,7 +66,7 @@ NODE_DIST="https://nodejs.org/dist/${NODE_VERSION}"
 HELPER_VERSION="$(/usr/bin/plutil -extract version raw -o - "${REPO_ROOT}/helper/package.json" 2>/dev/null)"
 [ -n "$HELPER_VERSION" ] || die "Could not read the helper version from helper/package.json."
 
-PKG_NAME="whatsapp-sales-ai-copilot-helper-${HELPER_VERSION}-macos-${ARCH}.pkg"
+PKG_NAME="ChatGPT-Connector-for-Sales-AI-Copilot-macOS-${ARCH}.pkg"
 
 say "Building ${PKG_NAME} (helper ${HELPER_VERSION}, Node ${NODE_VERSION} ${ARCH})"
 
@@ -119,9 +120,37 @@ chmod 644 "${LIBDIR}"/helper/*.js "${LIBDIR}"/helper/lib/*.js
 
 # The two files that carry a placeholder get it filled in here, so the prefix
 # lives in exactly one place in the source tree.
+# The launchd job starts a minimal .app bundle (no UI, background only) instead
+# of a bare shell script, so macOS' Login Items & Extensions can show
+# "ChatGPT Connector for Sales AI Copilot" and not "run-helper.sh". The bundle's executable is the same small
+# wrapper as before; the process that ends up running is still the bundled Node.
+APP_NAME="ChatGPT Connector for Sales AI Copilot"
+APP_DIR="${LIBDIR}/${APP_NAME}.app"
+mkdir -p "${APP_DIR}/Contents/MacOS" "${APP_DIR}/Contents/Resources"
 /usr/bin/sed "s|__PREFIX__|${PREFIX}|g" \
-	"${INSTALLER_DIR}/macos/payload/bin/run-helper.sh.in" > "${LIBDIR}/bin/run-helper.sh"
-chmod 755 "${LIBDIR}/bin/run-helper.sh"
+	"${INSTALLER_DIR}/macos/payload/bin/run-helper.sh.in" > "${APP_DIR}/Contents/MacOS/ChatGPT Connector"
+chmod 755 "${APP_DIR}/Contents/MacOS/ChatGPT Connector"
+/usr/bin/sed "s|__VERSION__|${HELPER_VERSION}|g" \
+	"${INSTALLER_DIR}/macos/payload/Info.plist.in" > "${APP_DIR}/Contents/Info.plist"
+chmod 644 "${APP_DIR}/Contents/Info.plist"
+/usr/bin/plutil -lint "${APP_DIR}/Contents/Info.plist" >/dev/null || die "Info.plist does not lint."
+
+# App icon from the brand logo (a resize only; no redesign).
+ICONSET="${STAGE}/AppIcon.iconset"
+mkdir -p "$ICONSET"
+LOGO="${REPO_ROOT}/assets/brand/employee-zero-logo-128.png"
+for n in 16 32 64 128; do /usr/bin/sips -z $n $n "$LOGO" --out "${ICONSET}/tmp$n.png" >/dev/null; done
+cp "${ICONSET}/tmp16.png" "${ICONSET}/icon_16x16.png"
+cp "${ICONSET}/tmp32.png" "${ICONSET}/icon_16x16@2x.png"
+cp "${ICONSET}/tmp32.png" "${ICONSET}/icon_32x32.png"
+cp "${ICONSET}/tmp64.png" "${ICONSET}/icon_32x32@2x.png"
+cp "${ICONSET}/tmp128.png" "${ICONSET}/icon_128x128.png"
+rm -f "${ICONSET}"/tmp*.png
+/usr/bin/iconutil -c icns "$ICONSET" -o "${APP_DIR}/Contents/Resources/AppIcon.icns" || die "iconutil failed."
+
+# Ad-hoc signature only: it makes the bundle internally consistent. It is NOT a
+# Developer ID signature and NOT notarization, and must never be described as such.
+/usr/bin/codesign --force --sign - "${APP_DIR}" >/dev/null 2>&1 || say "Warning: ad-hoc signing of the app bundle failed."
 
 /usr/bin/sed "s|__PREFIX__|${PREFIX}|g" \
 	"${INSTALLER_DIR}/macos/LaunchAgent.plist.in" > "${PAYLOAD}/Library/LaunchAgents/${LABEL}.plist"

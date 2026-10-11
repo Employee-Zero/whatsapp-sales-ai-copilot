@@ -83,49 +83,48 @@
           127.0.0.1, and an extension cannot open one. See docs/ARCHITECTURE.md.
         -->
         <div id="su-chatgpt" class="pane hidden">
-          <div id="su-cg-status" class="conn-status">Checking the local helper…</div>
+          <p class="cg-req">Requires ChatGPT Plus or Pro</p>
+          <div class="cg-steps">
+            <div class="cg-step">
+              <div class="cg-step-head">
+                <span class="cg-step-title"><span class="cg-num">1</span>Install ChatGPT Connector</span>
+                <span id="su-cg-b1" class="cg-badge"></span>
+              </div>
+              <div id="su-cg-a1" class="row cg-actions">
+                <a id="su-cg-download" class="btn-link primary" href="#" target="_blank" rel="noopener">Download for Mac</a>
+                <button id="su-cg-recheck" class="ghost" type="button">Recheck</button>
+              </div>
+              <p id="su-cg-fallback" class="cg-fallback"><a id="su-cg-release" href="#" target="_blank" rel="noopener">Download from GitHub</a></p>
+            </div>
 
-          <!--
-            The one thing that separates this method from the other, said before
-            the button rather than after a failed press. Inline and short, not a
-            dialog — and it collapses once the account is connected, because
-            from then on it is a question the user has already answered. The
-            expandable "Why the Helper?" below stays either way.
-          -->
-          <div id="su-cg-why" class="why">
-            <p class="why-title">Why a small Mac Helper?</p>
-            <p class="why-body">
-              OpenAI's sign-in runs securely on your own Mac. The Helper handles
-              it locally and keeps your sign-in private. Install it once — it
-              then runs quietly in the background.
-            </p>
-            <ol class="why-steps">
-              <li>Get the Helper installer (<code>.pkg</code>) for your Mac.</li>
-              <li>Double-click it and follow the installer.</li>
-              <li>Come back here — this panel detects the Helper by itself.</li>
-            </ol>
-            <p class="why-note">
-              Test build: the installer is not on GitHub Releases yet. Use the
-              <code>.pkg</code> file you were given with this extension. When
-              it is published it will be listed on the
-              <a href="https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases" target="_blank" rel="noopener">Releases page</a>.
-            </p>
-          </div>
+            <div class="cg-step">
+              <div class="cg-step-head">
+                <span class="cg-step-title"><span class="cg-num">2</span>Allow Local Access</span>
+                <span id="su-cg-b2" class="cg-badge"></span>
+                <button id="su-cg-allow" class="ghost tiny" type="button">Allow Access</button>
+              </div>
+            </div>
 
-          <div class="row">
-            <button id="su-cg-allow" class="ghost hidden" type="button">Allow local access</button>
-            <button id="su-cg-signin" class="primary" type="button">Continue with ChatGPT</button>
-            <button id="su-cg-signout" class="ghost tiny hidden" type="button">Sign out</button>
+            <div class="cg-step">
+              <div class="cg-step-head">
+                <span class="cg-step-title"><span class="cg-num">3</span>Connect with ChatGPT</span>
+                <span id="su-cg-b3" class="cg-badge"></span>
+                <button id="su-cg-signout" class="ghost tiny hidden" type="button">Sign Out</button>
+              </div>
+              <div class="row">
+                <button id="su-cg-signin" class="primary" type="button">Continue with ChatGPT</button>
+              </div>
+            </div>
           </div>
 
           <label class="field">
-            <span class="field-label">Model <span class="req">Required</span></span>
+            <span class="field-label">Model <span class="req-star" aria-hidden="true">*</span></span>
             <select id="su-cg-model"></select>
           </label>
           <p id="su-cg-model-hint" class="hint"></p>
 
           <div class="row">
-            <button id="su-cg-refresh" class="ghost tiny" type="button">Refresh models</button>
+            <button id="su-cg-refresh" class="ghost tiny" type="button">Refresh Models</button>
             <button id="su-cg-save" class="primary" type="button">Save &amp; Continue</button>
           </div>
           <div id="su-cg-result" class="test-result hidden"></div>
@@ -140,12 +139,12 @@
           </p>
 
           <label class="field">
-            <span class="field-label">API Base URL <span class="req">Required</span></span>
+            <span class="field-label">API Base URL <span class="req-star" aria-hidden="true">*</span></span>
             <input id="su-baseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
           </label>
 
           <label class="field">
-            <span class="field-label">API Key <span class="req">Required</span></span>
+            <span class="field-label">API Key <span class="req-star" aria-hidden="true">*</span></span>
             <span class="key-row">
               <input id="su-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="the key from your provider" />
               <button id="su-toggle-key" class="ghost tiny" type="button">Show</button>
@@ -153,13 +152,13 @@
           </label>
 
           <label class="field">
-            <span class="field-label">Model ID <span class="req">Required</span></span>
+            <span class="field-label">Model ID <span class="req-star" aria-hidden="true">*</span></span>
             <input id="su-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
           </label>
 
           <label class="field">
-            <span class="field-label">Fallback Base URL <span class="opt">Optional</span></span>
-            <input id="su-fallback" type="text" spellcheck="false" placeholder="only used if the first address cannot be reached" />
+            <span class="field-label">Fallback Base URL</span>
+            <input id="su-fallback" type="text" spellcheck="false" placeholder="Optional" />
           </label>
 
           <div class="row">
@@ -233,18 +232,39 @@
         <p id="cfg-mode-hint" class="hint"></p>
 
         <div id="cfg-chatgpt" class="pane">
-          <div id="cfg-cg-status" class="conn-status">Checking the local helper…</div>
+          <p class="cg-req">Requires ChatGPT Plus or Pro</p>
+          <div class="cg-steps">
+            <div class="cg-step">
+              <div class="cg-step-head">
+                <span class="cg-step-title"><span class="cg-num">1</span>Install ChatGPT Connector</span>
+                <span id="cfg-cg-b1" class="cg-badge"></span>
+              </div>
+              <div id="cfg-cg-a1" class="row cg-actions">
+                <a id="cfg-cg-download" class="btn-link primary" href="#" target="_blank" rel="noopener">Download for Mac</a>
+                <button id="cfg-cg-recheck" class="ghost" type="button">Recheck</button>
+              </div>
+              <p id="cfg-cg-fallback" class="cg-fallback"><a id="cfg-cg-release" href="#" target="_blank" rel="noopener">Download from GitHub</a></p>
+            </div>
 
-          <div class="row">
-            <button id="cfg-cg-allow" class="ghost hidden" type="button">Allow local access</button>
-            <button id="cfg-cg-signin" class="primary" type="button">Continue with ChatGPT</button>
-            <button id="cfg-cg-signout" class="ghost tiny hidden" type="button">Sign out</button>
+            <div class="cg-step">
+              <div class="cg-step-head">
+                <span class="cg-step-title"><span class="cg-num">2</span>Allow Local Access</span>
+                <span id="cfg-cg-b2" class="cg-badge"></span>
+                <button id="cfg-cg-allow" class="ghost tiny" type="button">Allow Access</button>
+              </div>
+            </div>
+
+            <div class="cg-step">
+              <div class="cg-step-head">
+                <span class="cg-step-title"><span class="cg-num">3</span>Connect with ChatGPT</span>
+                <span id="cfg-cg-b3" class="cg-badge"></span>
+                <button id="cfg-cg-signout" class="ghost tiny hidden" type="button">Sign Out</button>
+              </div>
+              <div class="row">
+                <button id="cfg-cg-signin" class="primary" type="button">Continue with ChatGPT</button>
+              </div>
+            </div>
           </div>
-          <p id="cfg-cg-install" class="hint hidden">
-            Helper not found. Install the Mac Helper (<code>.pkg</code>), then this
-            updates by itself.
-            <a href="https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases" target="_blank" rel="noopener">Releases</a>
-          </p>
 
           <label>
             Model
@@ -262,17 +282,17 @@
 
         <div id="cfg-apikey" class="pane">
           <label>
-            Primary Base URL
+            API Base URL <span class="req-star" aria-hidden="true">*</span>
             <input id="cfg-primaryBaseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
           </label>
 
           <label>
             Fallback Base URL
-            <input id="cfg-fallbackBaseUrl" type="text" spellcheck="false" placeholder="optional" />
+            <input id="cfg-fallbackBaseUrl" type="text" spellcheck="false" placeholder="Optional" />
           </label>
 
           <label>
-            API Key
+            API Key <span class="req-star" aria-hidden="true">*</span>
             <span class="key-row">
               <input id="cfg-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="your provider's API key" />
               <button id="btn-toggle-key" class="ghost tiny" type="button">Show</button>
@@ -280,7 +300,7 @@
           </label>
 
           <label>
-            Model ID
+            Model ID <span class="req-star" aria-hidden="true">*</span>
             <input id="cfg-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
           </label>
 
@@ -399,7 +419,7 @@
           id="ins-box"
           class="ins-box"
           rows="3"
-          placeholder="e.g. Keep it short and friendly"
+          placeholder="e.g. Ask if their financing is approved"
           spellcheck="false"
         ></textarea>
       </div>

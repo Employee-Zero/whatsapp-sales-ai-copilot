@@ -32,10 +32,16 @@
 	<string>com.employeezero.whatsapp-sales-ai-copilot.helper</string>
 
 	<!-- A shell script rather than node directly: it is what lets the log land
-	     in the logged-in user's own home. See payload/bin/run-helper.sh.in. -->
+	     in the logged-in user's own home. See payload/bin/run-helper.sh.in (installed as the app bundle's executable). -->
 	<key>ProgramArguments</key>
 	<array>
-		<string>__PREFIX__/bin/run-helper.sh</string>
+		<string>__PREFIX__/ChatGPT Connector for Sales AI Copilot.app/Contents/MacOS/ChatGPT Connector</string>
+	</array>
+
+	<!-- Lets Login Items & Extensions show the app's name rather than a file name. -->
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>com.employeezero.chatgpt-connector</string>
 	</array>
 
 	<key>RunAtLoad</key>

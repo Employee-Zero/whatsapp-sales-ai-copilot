@@ -673,7 +673,7 @@ const flushCalls = Array.from(insPanelCode.matchAll(/await flushInstruction\(\)/
 check('the box is flushed before the worker can read it', flushCalls.length >= 2, `${flushCalls.length} call(s)`);
 check(
   'both generate paths flush before calling the worker',
-  /await flushInstruction\(\);\s*const res = await callWorker\(\{ type: MSG\.GENERATE_REPLY \}\)/.test(insPanelCode) &&
+  /await flushInstruction\(\);\s*(?:setStatus\([^\n]*\);\s*)?const res = await callWorker\(\{ type: MSG\.GENERATE_REPLY \}\)/.test(insPanelCode) &&
     /await flushInstruction\(\);\s*const res = await callWorker\(\{ type: MSG\.FOLLOWUP_AND_SEND \}\)/.test(insPanelCode),
 );
 check(

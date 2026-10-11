@@ -57,17 +57,15 @@ Pick whichever suits you. You can switch later without losing the other one's se
 
 Use the ChatGPT plan you already pay for. You sign in to OpenAI in a normal browser tab, and this extension writes replies with the models your account can use.
 
-**This method needs one extra step.** OpenAI's sign-in for open-source and locally hosted apps only accepts a callback to `127.0.0.1` — a local address — and a browser extension cannot provide that on its own. So this repository ships a small **local helper**: a program you run yourself with Node.js, on your own computer. It completes the sign-in, and it is the only thing that ever holds your credential. The extension never sees a token and has nowhere to put one.
+**This method needs one extra step.** OpenAI's sign-in for open-source apps only accepts a callback to `127.0.0.1`, which a browser extension cannot provide. So Employee Zero ships **ChatGPT Connector for Sales AI Copilot**, a small background app for Apple Silicon Macs. It is made by Employee Zero and is not an OpenAI product. It completes the sign-in and is the only thing that holds your credential; the extension never sees a token.
 
-Setup is two commands:
+In the extension, choose **ChatGPT** and follow the three steps (requires ChatGPT Plus or Pro):
 
-```
-node helper/siwc-helper.js
-```
+1. **Install ChatGPT Connector** — click **Download for Mac** and open the `.pkg`. It is not signed with an Apple Developer ID or notarized, so macOS may ask you to allow it in System Settings › Privacy & Security.
+2. **Allow Local Access** — lets Chrome reach the Connector on `127.0.0.1`.
+3. **Connect with ChatGPT** — sign in to OpenAI in a normal browser tab, then pick a model.
 
-then click **Continue with ChatGPT** in the extension. The helper is a single folder, has no dependencies, and needs Node.js 20 or later. Signing out from the extension revokes the credential and deletes it.
-
-[Full instructions →](docs/GETTING_STARTED.md#option-a--sign-in-with-chatgpt) · [What the helper does and does not do →](helper/README.md)
+Direct download: [ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest/download/ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg). Signing out from the extension revokes the credential and deletes it. Developers can still run the source with `node helper/siwc-helper.js` (Node.js 20+); see [helper/README.md](helper/README.md).
 
 Two honest caveats. **Whether your plan is eligible is OpenAI's decision, not ours** — if your account cannot be used this way, the extension says so and the API-key method still works. And a plan is not unlimited: replies draw on the same allowance you use in ChatGPT itself, so heavy use will hit it.
 
@@ -77,7 +75,7 @@ Connect any OpenAI-compatible provider: the Base URL of its `POST /chat/completi
 
 ## Get Started
 
-1. **Download** the latest release and unzip it. You need the extension ZIP, and — only if you want the ChatGPT subscription method — the helper ZIP too.
+1. **Download** the latest release and unzip the extension ZIP. For the ChatGPT method you also install the Connector `.pkg` (the extension links to it).
 2. **Install** the extension in Chrome: `chrome://extensions` → Developer mode → Load unpacked.
 3. **Connect your AI**: sign in with ChatGPT, or enter your own API Base URL, API Key, and Model ID.
 4. **Start replying** — open a WhatsApp conversation, generate a reply, review, and send.
