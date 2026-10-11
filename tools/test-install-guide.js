@@ -26,16 +26,16 @@ const html = read('src/sidepanel/sidepanel.html');
 const consts = read('src/shared/constants.js');
 const build = read('tools/helper-installer/build-macos-pkg.sh');
 
-console.log('\n[1] versions and the Download for Mac link agree');
-check('manifest and helper package share a version', helperPkg.version === version, `${helperPkg.version} vs ${version}`);
-check('helper reports the same version', read('helper/siwc-helper.js').includes(`HELPER_VERSION = '${version}'`));
+console.log('\n[1] the Download for Mac link points at the published Connector');
 const dl = (consts.match(/CONNECTOR_DOWNLOAD_URL = '([^']+)'/) || [])[1] || '';
 const rel = (consts.match(/CONNECTOR_RELEASE_URL = '([^']+)'/) || [])[1] || '';
-check('download URL is on this repository\'s release for this version', dl.startsWith(`https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/download/v${version}/`), dl);
-check('release page URL is this version\'s tag', rel === `https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v${version}`, rel);
+const connectorVersion = (dl.match(/\/download\/v([\d.]+)\//) || [])[1];
+check('the Connector version in the link is the Connector source version', connectorVersion === helperPkg.version, `${connectorVersion} vs helper ${helperPkg.version}`);
+check('download URL is on this repository\'s release', dl.startsWith('https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/download/v'), dl);
+check('release page URL is the same tag as the download', rel === `https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v${connectorVersion}`, rel);
 const pkgNameInBuild = (build.match(/PKG_NAME="([^"]+)"/) || [])[1] || '';
-const expectedName = pkgNameInBuild.replace('${HELPER_VERSION}', version).replace('${ARCH}', 'arm64');
-check('the built PKG filename is exactly the one the extension links to', dl.endsWith(`/${expectedName}`), `${expectedName}`);
+check('the PKG filename the build produces is exactly the one linked', dl.endsWith(`/${pkgNameInBuild.replace('${ARCH}', 'arm64')}`), pkgNameInBuild);
+check('helper reports its own version', read('helper/siwc-helper.js').includes(`HELPER_VERSION = '${helperPkg.version}'`));
 
 console.log('\n[2] in-panel help for a blocked installer');
 for (const P of ['su', 'cfg']) {
@@ -59,7 +59,7 @@ check('README names the Connector requirement and platform', /Apple Silicon/.tes
 check('Getting Started starts from the Chrome extension, then offers both options', guide.indexOf('Step 1') < guide.indexOf('Option A') && guide.indexOf('Option A') < guide.indexOf('Option B'));
 check('Getting Started documents Open Anyway', /Open Anyway/.test(guide));
 check('Getting Started explains the backup is opt-in', /off by default/i.test(guide));
-check('Privacy is for this version', privacy.includes(`**Version:** ${version}`));
+check('Privacy is for this extension version', privacy.includes(`**Version:** ${version}`));
 check('Privacy mentions the Connector', /ChatGPT Connector/.test(privacy));
 check('Privacy no longer says there is no login', !/no login to this project/i.test(privacy) || /not.*OpenAI/i.test(privacy));
 for (const f of [guide, readme]) {

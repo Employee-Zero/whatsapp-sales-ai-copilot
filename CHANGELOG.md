@@ -15,7 +15,7 @@ Nothing yet.
 
 - **"macOS blocked the installer? How to open it"** — a collapsed help link beside *Download for Mac* explaining System Settings › Privacy & Security › Open Anyway. No instruction ever asks you to turn protection off.
 - Installation guide rewritten for v0.1.3: ChatGPT Plus/Pro first, API Key as an independent alternative, the opt-in API Key backup, and the Apple security prompt.
-- Release assets are named so the order is obvious: `01-REQUIRED-…Chrome-Extension…zip`, then `02-OPTIONAL-ChatGPT-Connector…pkg`.
+- The release carries only the Chrome extension ZIP. ChatGPT Connector is unchanged and keeps being published with v0.1.2; the extension's *Download for Mac* button links there.
 
 ### Changed
 

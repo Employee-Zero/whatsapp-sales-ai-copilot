@@ -66,7 +66,7 @@ NODE_DIST="https://nodejs.org/dist/${NODE_VERSION}"
 HELPER_VERSION="$(/usr/bin/plutil -extract version raw -o - "${REPO_ROOT}/helper/package.json" 2>/dev/null)"
 [ -n "$HELPER_VERSION" ] || die "Could not read the helper version from helper/package.json."
 
-PKG_NAME="02-OPTIONAL-ChatGPT-Connector-for-Sales-AI-Copilot-v${HELPER_VERSION}-macOS-${ARCH}.pkg"
+PKG_NAME="ChatGPT-Connector-for-Sales-AI-Copilot-macOS-${ARCH}.pkg"
 
 say "Building ${PKG_NAME} (helper ${HELPER_VERSION}, Node ${NODE_VERSION} ${ARCH})"
 

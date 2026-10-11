@@ -63,7 +63,7 @@ import {
   writeStore,
 } from './lib/store.js';
 
-const HELPER_VERSION = '0.1.3';
+const HELPER_VERSION = '0.1.2';
 const APP_NAME = 'WhatsApp Sales AI Copilot';
 
 /** Bodies are tiny; a cap keeps a stuck client from growing the heap. */

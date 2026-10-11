@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-sales-ai-copilot-helper",
-  "version": "0.1.3",
+  "version": "0.1.2",
   "private": true,
   "description": "Local helper that holds the ChatGPT-plan credential for the WhatsApp Sales AI Copilot Chrome extension. It exists because OpenAI's Sign-in-with-ChatGPT flow for open-source clients only accepts a loopback callback on 127.0.0.1, which a Chrome extension cannot provide.",
   "type": "module",

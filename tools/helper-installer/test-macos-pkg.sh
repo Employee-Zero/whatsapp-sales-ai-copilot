@@ -36,7 +36,7 @@ done
 case "$PKG_PATH" in --*) PKG_PATH="";; esac
 
 if [ -z "$PKG_PATH" ]; then
-	PKG_PATH="$(/bin/ls -t "${REPO_ROOT}"/dist/02-OPTIONAL-ChatGPT-Connector-for-Sales-AI-Copilot-v*-macOS-arm64.pkg 2>/dev/null | /usr/bin/head -1 || true)"
+	PKG_PATH="$(/bin/ls -t "${REPO_ROOT}"/dist/ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg 2>/dev/null | /usr/bin/head -1 || true)"
 fi
 [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ] || { echo "No package found. Build one first, or pass a path." >&2; exit 1; }
 

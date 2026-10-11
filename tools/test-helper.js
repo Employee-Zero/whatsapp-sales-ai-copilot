@@ -669,11 +669,12 @@ async function main() {
   );
 
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
-  eq('the helper version matches the extension version', helperMain.HELPER_VERSION, manifest.version);
   check('the helper exports what the CLI and tests need', typeof helperMain.createHandler === 'function' && typeof helperMain.status === 'function');
 
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'helper/package.json'), 'utf8'));
-  eq('the helper package version matches too', pkg.version, manifest.version);
+  // The Connector is versioned independently of the extension: extension releases
+  // keep linking to the last Connector package until the Connector itself changes.
+  eq('the helper package version matches the version it reports', pkg.version, helperMain.HELPER_VERSION);
   check('the helper is an ES module', pkg.type === 'module');
   check('the helper declares no dependencies', Object.keys(pkg.dependencies || {}).length === 0);
   check('and requires a Node with global fetch and node:test-free crypto', />= ?2[0-9]/.test(pkg.engines.node), pkg.engines.node);

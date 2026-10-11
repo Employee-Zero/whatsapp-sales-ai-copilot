@@ -10,10 +10,10 @@ Install **WhatsApp Sales AI Copilot** in four steps. No coding required.
 ## Step 1 — Download the Chrome extension
 
 1. Open the **[latest release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)**.
-2. Under **Assets**, download the file named **`01-REQUIRED-…Chrome-Extension-…zip`**. This is the main program and **everyone needs it first**.
+2. Under **Assets**, download the **`WhatsApp-Sales-AI-Copilot-Chrome-Extension-v….zip`** file. This is the main program and **everyone needs it first**.
 3. Unzip it and keep the folder somewhere permanent, such as Documents.
 
-Do **not** download the files labeled "Source code". The file starting with `02-OPTIONAL-` is ChatGPT Connector — you will get it later, from inside the extension, and only if you choose ChatGPT.
+Do **not** download the files labeled "Source code". **ChatGPT Connector** is a separate download, needed only for ChatGPT on a Mac. You do not get it from the release above: the extension's **Download for Mac** button links to it (it is published with [release v0.1.2](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v0.1.2) and works with later extension versions).
 
 *You do not need a GitHub account to download.*
 
@@ -107,7 +107,7 @@ Choose **Short**, **Medium** or **Long**. Use **Add a tip for this message** for
 
 **API Key connection failed.** Check API Base URL, API Key, Model ID and your provider account.
 
-**Updating?** Download the latest `01-REQUIRED-…zip`, replace the files in the same folder, click Reload on `chrome://extensions`, and refresh WhatsApp Web. If a new ChatGPT Connector is offered, install it the same way; your sign-in is kept.
+**Updating?** Download the latest `…Chrome-Extension-v….zip`, replace the files in the same folder, click Reload on `chrome://extensions`, and refresh WhatsApp Web. If a new ChatGPT Connector is offered, install it the same way; your sign-in is kept.
 
 **Developers** can still run the Connector from source — see [helper/README.md](../helper/README.md).
 

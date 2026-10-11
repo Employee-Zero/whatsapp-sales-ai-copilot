@@ -12,7 +12,7 @@ An open-source Chrome extension that helps salespeople understand past WhatsApp 
 - **API Key** — works on its own, on any computer Chrome runs on, with any OpenAI-compatible provider. No Connector, no ChatGPT subscription.
 - **Optional backup:** if you use ChatGPT, you can turn on *Use API Key as backup* (off by default). Then, only when ChatGPT is out of allowance or temporarily unavailable, your API provider answers instead.
 
-**[Download the Chrome extension](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)** (required) · **[Installation Guide](docs/GETTING_STARTED.md)** · ChatGPT Connector (macOS, only for ChatGPT) is the second download on the same release page.
+**[Download the Chrome extension](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest)** (required) · **[Installation Guide](docs/GETTING_STARTED.md)** · For ChatGPT on a Mac, also get **[ChatGPT Connector](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/download/v0.1.2/ChatGPT-Connector-for-Sales-AI-Copilot-macOS-arm64.pkg)** (a separate download, only needed for ChatGPT; it is published with release [v0.1.2](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v0.1.2) and is compatible with later extension versions).
 
 <a href="docs/assets/04-generated-draft.png"><img src="docs/assets/04-generated-draft.png" alt="AI-generated sales reply (demo conversation)" width="260"></a>
 
@@ -46,7 +46,7 @@ Create natural, context-aware replies based on your conversations. Choose the le
 
 ## Get Started
 
-1. **Download the Chrome extension** (the ZIP named `…Chrome-Extension…`) from the [latest release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest), unzip it, and install it: `chrome://extensions` → Developer mode → Load unpacked.
+1. **Download the Chrome extension** first (the ZIP named `…Chrome-Extension…`) from the [latest release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/latest), unzip it, and install it: `chrome://extensions` → Developer mode → Load unpacked.
 2. **Open the extension on WhatsApp Web** and choose how to connect:
    - **ChatGPT** — follow the three steps in the panel: *Install ChatGPT Connector* → *Allow Local Access* → *Continue with ChatGPT*. Requires ChatGPT Plus or Pro and a Mac with Apple silicon.
    - **API Key** — enter your API Base URL, API Key and Model ID. Nothing else to install.

@@ -141,7 +141,8 @@ async function main() {
     }
     check('it starts and answers --status', !!status, statusError);
     if (status) {
-      check('it reports its own version', status.version === manifest.version, `${status.version} vs ${manifest.version}`);
+      const helperVersion = JSON.parse(fs.readFileSync(path.join(REPO, 'helper/package.json'), 'utf8')).version;
+      check('it reports its own version', status.version === helperVersion, `${status.version} vs ${helperVersion}`);
       check('it is not signed in on a fresh machine', status.signedIn === false, String(status.signedIn));
       check('it says no credential file exists yet', status.credentialFile && status.credentialFile.exists === false, JSON.stringify(status.credentialFile));
       check('it reads no credential file without writing one', !fs.existsSync(path.join(helperHome, 'config', 'credentials.json')));
