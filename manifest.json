@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "WhatsApp Sales AI Copilot",
   "short_name": "Sales AI Copilot",
-  "version": "0.1.0",
-  "description": "An AI assistant for salespeople on WhatsApp Web: draft a reply from the conversation in front of you, edit it, then send it yourself.",
+  "version": "0.1.1",
+  "description": "An AI assistant for salespeople on WhatsApp Web: draft a reply from the conversation in front of you, edit it, then send it yourself. Works with your own API key or your ChatGPT plan.",
   "minimum_chrome_version": "116",
 
   "permissions": [
@@ -19,7 +19,8 @@
 
   "optional_host_permissions": [
     "https://*/*",
-    "http://localhost/*"
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
 
   "background": {

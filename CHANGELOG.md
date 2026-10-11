@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [0.2.0] - 2026-10-11
+
+Connect an AI provider two ways: sign in with a ChatGPT plan, or use your own API key. Both are offered in the first-run setup and in Settings, and switching between them keeps the other one's settings, your per-chat instructions and your drafts.
+
+### Added
+
+- **Sign in with ChatGPT.** Use the ChatGPT plan you already pay for. You sign in to OpenAI in a normal browser tab, the extension lists the models your account can use, and replies are written with the one you pick. Whether a plan is eligible, and how much allowance it has, is decided by OpenAI — the extension reports what OpenAI says rather than guessing.
+- **A local helper for the subscription method** (`helper/`, shipped as its own archive). OpenAI's sign-in for open-source and locally hosted apps accepts only a callback to `127.0.0.1`, which a browser extension cannot receive, so the callback has to be handled by a program on your own computer. The helper is a single folder, has no dependencies, and needs Node.js 20 or later. Run it with `node helper/siwc-helper.js`.
+- **The subscription credential never enters the browser.** It is held by the helper in `~/.config/whatsapp-sales-ai-copilot/credentials.json` (`%APPDATA%` on Windows), directory `0700`, file `0600`, written atomically. The extension has no field that could store a token, and tokens are never logged, never placed in the page, and never passed to the WhatsApp content script. Signing out revokes the credential at OpenAI and deletes the file.
+- **A connection indicator in the panel header.** It says which AI is answering — the model name, `Sign in`, `Helper off`, `Pick a model` — and clicking it opens the connection settings.
+- **A separate test that does not spend anything.** Test Connection checks the helper is running, that you are signed in, and that the model is one your account has. A second, clearly labelled button sends one real short request when you want to check end to end.
+- **A second release archive** for the helper, so the path the panel tells you to run is the path you have.
+- **A new test suite, `tools/test-helper.js`** (264 assertions, no browser, no network, no account), covering PKCE, the SSE parser, the request body, the loopback request guards, the credential file, the authorize URL, ID-token validation against a real generated RSA keypair, and both halves talking over real HTTP.
+
+### Changed
+
+- **`optional_host_permissions` now includes `http://127.0.0.1/*` again**, this time for the helper. It is requested only when you click **Continue with ChatGPT**, never up front, and only for the loopback origin.
+- **Temperature and maximum output tokens are labelled as applying to the API-key method.** OpenAI's flow for open-source clients rejects them, so the subscription path does not offer settings it would then ignore.
+- The API-key method is unchanged. Its fields, its request shape and its behaviour are the same as 0.1.0, and the new test suite asserts that the subscription path cannot disturb them.
+- Documentation, screenshots and the privacy and security policies now cover both methods.
+
+### Fixed
+
+- The helper now sends the error-code names the extension actually understands. Before this, six of its eight failure codes were unrecognised, so hitting your plan's allowance showed a generic "the request failed" instead of telling you which limit you had reached.
+- The helper builds the sign-in callback from the port it is actually listening on, rather than the default port. A helper started with `--port` would previously have sent the browser to an address with nothing behind it.
+
+[Unreleased]: https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v0.2.0
+[0.1.0]: https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v0.1.0
+
 ## [0.1.0] - 2026-10-10
 
 The first public release of WhatsApp Sales AI Copilot.

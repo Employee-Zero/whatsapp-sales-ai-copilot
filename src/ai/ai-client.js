@@ -24,6 +24,8 @@ import {
   THINKING_MODE,
   THINKING_SPECS,
   CONFIG_VERSION,
+  CONNECTION_MODE,
+  connectionModeOf,
   hasRequiredConfig,
   missingAiFields,
 } from './../shared/constants.js';
@@ -45,6 +47,13 @@ import {
   instructionBlock,
   migrateStoredConfig,
 } from './../shared/utils.js';
+import {
+  helperBaseUrl,
+  generate as chatgptGenerate,
+  checkConnection as chatgptCheckConnection,
+  sendTestRequest as chatgptTestRequest,
+  helperStatus,
+} from './chatgpt-client.js';
 
 /**
  * The system prompt, as configured.
@@ -94,6 +103,11 @@ async function loadAiConfig() {
   cfg.primaryBaseUrl = normalizeBaseUrl(cfg.primaryBaseUrl);
   cfg.fallbackBaseUrl = normalizeBaseUrl(cfg.fallbackBaseUrl);
   cfg.model = String(cfg.model || '').trim();
+  // A config written before this field existed has no `connectionMode`; mergeConfig
+  // fills the default, which is the API-key path, which is what that build did.
+  cfg.connectionMode = connectionModeOf(cfg);
+  cfg.chatgptModel = String(cfg.chatgptModel || '').trim();
+  cfg.helperUrl = helperBaseUrl(cfg);
   cfg.replyLength = oneOf(cfg.replyLength, REPLY_LENGTH_SPECS, REPLY_LENGTH.MEDIUM);
   cfg.thinking = oneOf(cfg.thinking, THINKING_SPECS, THINKING_MODE.AUTO);
 
@@ -123,6 +137,9 @@ async function saveAiConfig(partial) {
   next.primaryBaseUrl = normalizeBaseUrl(next.primaryBaseUrl);
   next.fallbackBaseUrl = normalizeBaseUrl(next.fallbackBaseUrl);
   next.model = String(next.model || '').trim();
+  next.connectionMode = connectionModeOf(next);
+  next.chatgptModel = String(next.chatgptModel || '').trim();
+  next.helperUrl = helperBaseUrl(next);
   next.replyLength = oneOf(next.replyLength, REPLY_LENGTH_SPECS, REPLY_LENGTH.MEDIUM);
   next.thinking = oneOf(next.thinking, THINKING_SPECS, THINKING_MODE.AUTO);
   // An emptied prompt means "use the built-in one", never "send no instructions".
@@ -170,7 +187,20 @@ async function seedAiConfigIfMissing() {
 function publicConfig(cfg) {
   const key = cfg.apiKey || '';
   const missing = missingAiFields(cfg);
+  const mode = connectionModeOf(cfg);
   return {
+    /**
+     * Which method is live, and the fields of both.
+     *
+     * The inactive method's fields are sent too, always. Switching method is a
+     * two-way door — a user tries the subscription, it turns out their account
+     * is not eligible, and they go back to the key they already had. Hiding the
+     * other method's values from the panel is how that door quietly becomes
+     * one-way.
+     */
+    connectionMode: mode,
+    chatgptModel: cfg.chatgptModel,
+    helperUrl: cfg.helperUrl,
     primaryBaseUrl: cfg.primaryBaseUrl,
     fallbackBaseUrl: cfg.fallbackBaseUrl,
     model: cfg.model,
@@ -543,6 +573,22 @@ async function generateReply(ctx) {
   }
 
   const baseBudget = resolveMaxTokens(cfg);
+
+  // The two methods share everything above this line — the config read, the
+  // configuration gate, the context window, the prompt assembly — and nothing
+  // below it. That split is deliberate: the prompt a salesperson tunes is the
+  // same prompt on either path, and only the transport differs.
+  if (connectionModeOf(cfg) === CONNECTION_MODE.CHATGPT) {
+    log('Calling ChatGPT plan', `model=${cfg.chatgptModel}`, `helper=${helperBaseUrl(cfg)}`, `length=${cfg.replyLength}`);
+    const out = await chatgptGenerate(cfg, {
+      instructions: systemPromptFor(cfg) + instructionBlock(ctx.instruction),
+      input: buildUserPrompt(Object.assign({}, ctx, { transcript }), cfg),
+      timeoutMs: cfg.timeoutMs,
+    });
+    log('ChatGPT plan completed', `${out.elapsedMs}ms`);
+    return { text: out.text, model: out.model, usage: out.usage, elapsedMs: out.elapsedMs, usedFallback: false };
+  }
+
   log(
     'Calling AI',
     `model=${cfg.model}`,
@@ -626,6 +672,25 @@ async function testConnection(overrideCfg) {
   cfg.primaryBaseUrl = normalizeBaseUrl(cfg.primaryBaseUrl);
   cfg.fallbackBaseUrl = normalizeBaseUrl(cfg.fallbackBaseUrl);
   cfg.model = String(cfg.model || '').trim();
+  cfg.connectionMode = connectionModeOf(cfg);
+  cfg.chatgptModel = String(cfg.chatgptModel || '').trim();
+  cfg.helperUrl = helperBaseUrl(cfg);
+
+  // ChatGPT mode: this button deliberately does NOT send an inference request.
+  //
+  // The API-key test costs a fraction of a cent and the user has already agreed
+  // to pay for that key, so it makes a real call. This path spends an allowance
+  // the user shares with every other app on their ChatGPT account, and a
+  // "Test" button that quietly consumes part of it is a button people learn not
+  // to press. So it answers the four questions that can be answered for free —
+  // helper running, account signed in, plan usage allowed, model in this
+  // account's catalogue — and reports `inferenceRequestSent: false` so the panel
+  // can say what it actually did. The real request is a separate, labelled
+  // button: `testChatGPTRequest` below.
+  if (cfg.connectionMode === CONNECTION_MODE.CHATGPT) {
+    const out = await chatgptCheckConnection(cfg);
+    return Object.assign({ mode: 'chatgpt' }, out);
+  }
 
   // Same gate as a real request, so "Test" can never report on a request that
   // could not have been made. Naming the missing fields is the whole value of
@@ -691,6 +756,37 @@ async function testConnection(overrideCfg) {
 }
 
 /**
+ * ChatGPT mode: send ONE real, minimal request to the user's plan.
+ *
+ * Separate from `testConnection` on purpose — this one spends the account's
+ * allowance, so it is only ever reached from a button that says so.
+ *
+ * @param {object} [overrideCfg] values currently typed in the Settings form
+ * @returns {Promise<object>} always resolves; inspect `.ok`
+ */
+async function testChatGPTRequest(overrideCfg) {
+  const base = await loadAiConfig();
+  const cfg = mergeConfig(DEFAULT_AI_CONFIG, Object.assign({}, base, overrideCfg || {}));
+  cfg.connectionMode = connectionModeOf(cfg);
+  cfg.chatgptModel = String(cfg.chatgptModel || '').trim();
+  cfg.helperUrl = helperBaseUrl(cfg);
+
+  if (!cfg.chatgptModel) {
+    return {
+      ok: false,
+      code: ERR.AI_NOT_CONFIGURED,
+      error: 'Choose a model first.',
+      missingFields: ['chatgptModel'],
+      missingFieldLabels: [AI_FIELD_LABELS.chatgptModel],
+    };
+  }
+
+  const out = await chatgptTestRequest(cfg);
+  log('ChatGPT test request', out.ok ? 'succeeded' : `failed (${out.code})`);
+  return Object.assign({ mode: 'chatgpt', inferenceRequestSent: true }, out);
+}
+
+/**
  * Send a message to the WhatsApp tab's content script, re-injecting the scripts
  * if the tab was reloaded and the content script is gone.
  *
@@ -738,5 +834,7 @@ export {
   extractText,
   generateReply,
   testConnection,
+  testChatGPTRequest,
+  helperStatus,
   sendToTab,
 };

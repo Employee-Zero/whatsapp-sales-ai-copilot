@@ -1,6 +1,6 @@
 # WhatsApp Sales AI Copilot — Chrome Extension
 
-**Stop rereading chats. Let AI handle your sales follow-ups.**
+**Stop rereading chats. Let AI handle the sales follow-up.**
 
 An open-source Chrome extension that helps salespeople understand past WhatsApp conversations and generate relevant replies and follow-ups — without copying and pasting.
 
@@ -42,32 +42,67 @@ Create natural, context-aware replies based on your conversations. Choose the le
 
 **Less reading. Less copying. More selling.**
 
+## Two Ways to Connect Your AI
+
+Pick whichever suits you. You can switch later without losing the other one's settings, your per-chat instructions, or your drafts.
+
+<table>
+<tr>
+<td align="center" width="50%"><a href="docs/assets/08-chatgpt-helper-off.png"><img src="docs/assets/08-chatgpt-helper-off.png" alt="Connect with a ChatGPT subscription" width="230"></a><br><sub><b>ChatGPT subscription</b></sub></td>
+<td align="center" width="50%"><a href="docs/assets/01-first-run-setup.png"><img src="docs/assets/01-first-run-setup.png" alt="Connect with your own API key" width="230"></a><br><sub><b>Your own API key</b></sub></td>
+</tr>
+</table>
+
+### Sign in with ChatGPT
+
+Use the ChatGPT plan you already pay for. You sign in to OpenAI in a normal browser tab, and this extension writes replies with the models your account can use.
+
+**This method needs one extra step.** OpenAI's sign-in for open-source and locally hosted apps only accepts a callback to `127.0.0.1` — a local address — and a browser extension cannot provide that on its own. So this repository ships a small **local helper**: a program you run yourself with Node.js, on your own computer. It completes the sign-in, and it is the only thing that ever holds your credential. The extension never sees a token and has nowhere to put one.
+
+Setup is two commands:
+
+```
+node helper/siwc-helper.js
+```
+
+then click **Continue with ChatGPT** in the extension. The helper is a single folder, has no dependencies, and needs Node.js 20 or later. Signing out from the extension revokes the credential and deletes it.
+
+[Full instructions →](docs/GETTING_STARTED.md#option-a--sign-in-with-chatgpt) · [What the helper does and does not do →](helper/README.md)
+
+Two honest caveats. **Whether your plan is eligible is OpenAI's decision, not ours** — if your account cannot be used this way, the extension says so and the API-key method still works. And a plan is not unlimited: replies draw on the same allowance you use in ChatGPT itself, so heavy use will hit it.
+
+### Your own API key
+
+Connect any OpenAI-compatible provider: the Base URL of its `POST /chat/completions` endpoint, your API key, and the model name. Nothing to install, and you control which provider sees your conversations.
+
 ## Get Started
 
-1. **Download** the latest ZIP and unzip it.
-2. **Install** it in Chrome: `chrome://extensions` → Developer mode → Load unpacked.
-3. **Connect your AI** using your API Base URL, API Key, and Model ID.
+1. **Download** the latest release and unzip it. You need the extension ZIP, and — only if you want the ChatGPT subscription method — the helper ZIP too.
+2. **Install** the extension in Chrome: `chrome://extensions` → Developer mode → Load unpacked.
+3. **Connect your AI**: sign in with ChatGPT, or enter your own API Base URL, API Key, and Model ID.
 4. **Start replying** — open a WhatsApp conversation, generate a reply, review, and send.
 
 **[Step-by-Step Installation Guide →](docs/GETTING_STARTED.md)**
 
 ## AI Setup & Cost
 
-**The extension is free and open source. AI replies require your own API key.**
+**The extension is free and open source. AI replies require either your own API key or an eligible ChatGPT plan.**
 
-Connect an OpenAI-compatible AI provider of your choice. Your provider may charge for API usage.
+- **With your own API key**, your provider charges you for usage at its own rates.
+- **With a ChatGPT plan**, replies count against your plan's allowance instead. This project cannot tell you whether your particular plan is eligible, what it costs, or how much allowance you have — only OpenAI can, and the sign-in is where you find out.
 
-New to AI APIs? Our [Installation Guide](docs/GETTING_STARTED.md#step-3--connect-your-ai) explains how to get an API key and set everything up.
+New to AI APIs? Our [Installation Guide](docs/GETTING_STARTED.md#option-b--use-your-own-api-key) explains how to get a key and set everything up.
 
-*Note: A ChatGPT subscription does not include API credits.*
+*Note: these are two separate things. A ChatGPT subscription is not API credit, and an API key does not draw on your subscription.*
 
 ## Good to Know
 
-- Chat messages are sent to your chosen AI provider when you generate a reply.
+- Chat messages are sent to the AI provider you chose when you generate a reply — your API provider, or OpenAI if you connected a ChatGPT plan.
+- If you use the ChatGPT subscription method, your sign-in credential is stored by the local helper on your own computer, in a file only your user account can read. It is never put in browser storage, never logged, and never sent to WhatsApp.
 - Only messages currently loaded in WhatsApp Web are available to the extension.
 - No CRM integration, bulk messaging, or scheduled follow-ups.
-- This is an independent open-source project, not affiliated with WhatsApp or Meta.
+- This is an independent open-source project, not affiliated with WhatsApp, Meta, or OpenAI.
 
-[Privacy](PRIVACY.md) · [For Developers](docs/DEVELOPMENT.md) · [Report an Issue](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/issues) · [MIT License](LICENSE)
+[Privacy](PRIVACY.md) · [Security](SECURITY.md) · [For Developers](docs/DEVELOPMENT.md) · [Report an Issue](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/issues) · [MIT License](LICENSE)
 
 **Employee Zero — Your first employee isn't human.**

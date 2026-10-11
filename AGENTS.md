@@ -125,14 +125,15 @@ shows nothing), then start the new one.
 
 ---
 
-## 4. The four verification paths
+## 4. The verification paths
 
 | Path | Needs a browser? | Needs CDP? | Use it for |
 |---|---|---|---|
-| **A. Offline logic tests** | no | no | Pure functions, constants, protocol contracts. `node tools/test-safety.js` — 293 assertions |
+| **A. Offline logic tests** | no | no | Pure functions, constants, protocol contracts. `node tools/test-safety.js` — 345 assertions |
 | **B. Manual real-browser testing** | ✅ the daily profile | no | Real clicks, real sends, login-state questions. A human operates; an agent reads `chrome.storage.local` / extension page state / logs |
 | **C. Test-bridge automation** | ✅ the daily profile | **no** | Driving the panel DOM, capturing outgoing request bodies, batch assertions |
-| **D. Release verification** | ✅ a throwaway profile | no | Does the artefact we are about to publish actually install? `node tools/verify-release.js <zip>` — 16 assertions, run before every release |
+| **D. Release verification** | ✅ a throwaway profile | no | Do the artefacts we are about to publish actually install and run? `node tools/verify-release.js <zip>` — 35 assertions, run before every release |
+| **E. Helper suite** | no | no | The subscription method's own half: PKCE, the SSE parser, the Responses request body, the loopback guards, the credential file, ID-token validation, and both halves over real HTTP. `node tools/test-helper.js` — 264 assertions |
 
 **Path C needs no CDP.** It is this repository's positive answer to the
 constraint in §2: rather than build a second profile for a debugging port (and
@@ -189,16 +190,23 @@ This only has to be done once:
 That origin is already in `manifest.json`'s `optional_host_permissions`, and the
 grant **persists in that profile**, so it never has to be clicked again.
 
-It is optional rather than a required `host_permission` for two reasons. First,
-nothing in the shipped extension needs an optional host grant to work: the only
-code that calls `chrome.permissions.request` is this bridge. Second, it is not a
-permission that exists *only* for testing — `https://*/*` and `http://localhost/*`
-are what a user's own AI provider needs, including a model server running on
-their own machine, and the manifest states them once for both purposes. The
-earlier note here claimed the published manifest carried no test-only
-permission; that was wrong while `http://127.0.0.1/*` was still listed beside
-`http://localhost/*`. That redundant second loopback pattern is gone, and this
-page now uses `localhost` too.
+`optional_host_permissions` is optional rather than a required `host_permission`
+because the shipped extension needs no host grant to work until the user asks for
+one, and because these origins are not test-only: `https://*/*` and
+`http://localhost/*` are what a user's own AI provider needs, including a model
+server running on their own machine.
+
+Two things about that list are easy to get wrong, so they are stated plainly:
+
+- **`http://127.0.0.1/*` is back in the manifest, and it is not for the bridge.**
+  The local helper for the ChatGPT subscription method listens there, and the
+  panel asks for that origin at the moment the user clicks **Continue with
+  ChatGPT** — see `ensureLoopbackPermission()` in `src/sidepanel/sidepanel.js`.
+  It is requested per-origin, on a user gesture, and never up front.
+- **So the shipped extension does call `chrome.permissions.request` now.** The
+  earlier note here said the bridge was the only code that did. That was true in
+  0.1.0 and is not true in 0.2.0. The bridge still uses `localhost`, not
+  `127.0.0.1`; the two are separate entries for separate purposes.
 
 After that:
 
@@ -243,14 +251,40 @@ silently falling back to a forbidden profile is worse than failing outright.
 `tools/test-instruction-ai-path.js` have moved from CDP to the test bridge and
 no longer need a debugging port.
 
-### 4.4 The rest of the tooling
+### 4.4 Path E — the helper suite
+
+The subscription method puts half of its logic in a second component
+(`helper/`), which is a plain Node program rather than extension code. It gets
+its own suite for the same reason path A exists: the parts that are worth
+testing are pure or nearly pure, and they can be tested with nothing but Node.
+
+```
+node tools/test-helper.js     # 264 assertions: no browser, no network, no account
+```
+
+It is CommonJS and dynamically `import()`s the helper's ES modules, so it needs
+no build step and no package installation. `fetch` is stubbed for the inference
+cases, and the ID-token cases generate a real RSA keypair with
+`crypto.generateKeyPairSync` rather than shipping a fixture. Section 13 is the
+exception to "no network": it starts the helper's real request handler on an
+ephemeral port and drives it with the real `src/ai/chatgpt-client.js`, over
+loopback only.
+
+**What it does not prove.** It never performs a real sign-in, never contacts
+OpenAI, and never writes to a real credential file — the credential cases run
+under a `WHATSAPP_COPILOT_HOME` pointing at a temp directory. A passing run says
+the protocol handling is right; it says nothing about whether a given account is
+eligible for the plan flow. Only a real sign-in can tell you that, and it is a
+human step.
+
+### 4.5 The rest of the tooling
 
 | Tool | What it does |
 |---|---|
 | `node tools/build-classic.js` | Regenerates the `*.classic.js` copies from the ES modules. `--check` verifies them without writing, and fails if a copy is stale. **Run it after every edit to a shared module** — see §5. |
 | `node tools/shoot.js` | Documentation screenshots of the real panel, on a throwaway profile |
-| `node tools/build-release.js` | Builds the release ZIP (`manifest.json` plus `src/`, minus `src/test/`), and refuses to build if the manifest names a file that is not there |
-| `node tools/verify-release.js` | Loads the built ZIP into a throwaway profile and checks that Chrome accepts it, the service worker starts and the panel boots |
+| `node tools/build-release.js` | Builds **both** release archives: the extension ZIP (`manifest.json` plus `src/`, minus `src/test/`) and the helper ZIP (`helper/**`, keeping its prefix). Refuses to build if the manifest names a file that is not there, or if the helper is missing a file or has picked up a stray one |
+| `node tools/verify-release.js` | Loads both archives into a throwaway profile: Chrome accepts the extension, the service worker starts, the panel boots offering both connection methods, and the helper runs out of its own archive against a throwaway `WHATSAPP_COPILOT_HOME` |
 
 `tools/shoot.js` and `tools/verify-release.js` are the two tools that start a
 browser on a throwaway `--user-data-dir`, as described in §2.2.
@@ -277,6 +311,21 @@ test. Three rules:
    it pins anything.** This unhooks the panel from whatever real conversation
    the WhatsApp tab happens to have open, so the panel under test is looking at
    a synthetic context instead of a live customer's chat.
+4. **Never run the subscription path against a real account without saying so
+   first.** A real signed-in helper can spend a real plan's allowance. The
+   helper's `/test` and `/generate` endpoints make real, quota-consuming calls;
+   `tools/test-helper.js` stubs the network and never reaches them.
+5. **Never write a credential anywhere but the helper's own file.** Not into
+   `chrome.storage`, not into a test fixture, not into a log, not into a
+   screenshot, not into a report. Section 3 rule 7 applies to the subscription
+   method exactly as it does to an API key, and it covers refresh tokens and
+   access tokens as well as keys. Report `FOUND` / `MISSING` / `VALID` /
+   `INVALID` / `CONNECTED` / `FAILED`, never a value.
+6. **Never put a token in the browser.** The whole point of the helper design is
+   that the extension has no field that could hold one. A change that adds one —
+   even behind a flag, even "temporarily" — is not a change to make. If a test
+   needs to see a signed-in panel, use the probe's `overrideChatGptStatus()`,
+   which renders the panel's own markup from a value you supply.
 
 ---
 
@@ -286,8 +335,9 @@ test. Three rules:
 |---|---|
 | Chrome | 116 or later (`manifest.json`'s `minimum_chrome_version`) |
 | Node | For the scripts under `tools/`; the bridge server uses only `node:http`, with no dependencies |
+| Node, for the helper | **20 or later.** `helper/` is a separate package with no dependencies and uses only the standard library |
 | Loading the extension | unpacked (`chrome://extensions` → Developer mode → Load unpacked) |
-| AI configuration | After installing, enter the API key in the side panel's Settings; **no key is in this repository** |
+| AI configuration | After installing, connect either method in the side panel: an API key, or a ChatGPT plan through the local helper. **No key and no credential is in this repository** |
 | Browser for the driving tools | Chrome for Testing, found by `tools/browser.js`, overridable with `CHROME_BIN` (§2.1) |
 
 `docs/DEVELOPMENT.md` records the versions and the observed limitation

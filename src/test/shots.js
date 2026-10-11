@@ -65,6 +65,72 @@ const CONFIGURED = {
   missingFieldLabels: [],
 };
 
+/** The subscription method, with nothing signed in yet. */
+const CHATGPT_CONFIG = Object.assign({}, UNCONFIGURED, {
+  connectionMode: 'chatgpt',
+  chatgptModel: '',
+  helperUrl: 'http://127.0.0.1:8788',
+  missingFields: ['chatgptModel'],
+  missingFieldLabels: ['Model'],
+});
+
+/**
+ * What the worker reports when the helper has not been started.
+ *
+ * This is the state most people meet first, so it is the honest one to
+ * photograph: it is also what the panel really renders in this throwaway
+ * profile, because there is no helper running anywhere near it.
+ */
+const HELPER_DOWN = {
+  helper: 'unreachable',
+  signedIn: false,
+  planScope: false,
+  signIn: 'none',
+  signInError: '',
+  startCommand: 'node helper/siwc-helper.js',
+  helperUrl: 'http://127.0.0.1:8788',
+  email: '',
+  label: '',
+  error: 'CHATGPT_HELPER_UNREACHABLE',
+};
+
+/**
+ * A connected subscription account.
+ *
+ * Invented, like the conversation: there is no account behind it and no token
+ * anywhere. The placeholder model names are not real ones either — publishing a
+ * picture of a real account's catalogue would date the docs and say something
+ * about somebody's plan that is theirs to say.
+ */
+const CHATGPT_CONNECTED = Object.assign({}, HELPER_DOWN, {
+  helper: 'running',
+  signedIn: true,
+  planScope: true,
+  email: 'd.whitfield@example.com',
+  label: 'd.whitfield@example.com',
+  error: '',
+});
+
+const CHATGPT_MODELS = [
+  { slug: 'example-standard', displayName: 'Example Standard' },
+  { slug: 'example-mini', displayName: 'Example Mini' },
+  { slug: 'example-reasoning', displayName: 'Example Reasoning' },
+];
+
+/**
+ * The subscription method once it is finished: a model chosen, nothing missing.
+ *
+ * The difference from `CHATGPT_CONFIG` is not cosmetic — with a field still
+ * missing the panel correctly keeps the welcome card up, and a picture of the
+ * settings pane would have that card stacked above it.
+ */
+const CHATGPT_READY = Object.assign({}, CHATGPT_CONFIG, {
+  chatgptModel: 'example-standard',
+  hasRequiredConfig: true,
+  missingFields: [],
+  missingFieldLabels: [],
+});
+
 // ------------------------------------------------------------------- plumbing
 
 const params = new URLSearchParams(location.search);
@@ -258,6 +324,52 @@ const scenes = {
       p.overrideConfig(CONFIGURED);
       click('btn-settings');
       click('tab-advanced');
+      await settle();
+    },
+  },
+
+  /**
+   * The first-run card on the subscription method, before the helper is up.
+   *
+   * Nothing here is staged: `renderConfig` asks the worker for the helper's
+   * status, the worker finds nothing listening on 127.0.0.1, and the panel says
+   * so. The instruction underneath is the panel's own.
+   */
+  chatgpt: {
+    async run() {
+      const p = probe();
+      await pinChat();
+      p.overrideConfig(CHATGPT_CONFIG);
+      // Let the panel's own status round-trip land first, so it is not
+      // overwritten a tick later by the answer that was already in flight.
+      await settle(800);
+      p.overrideChatGptStatus(HELPER_DOWN, []);
+      await settle();
+    },
+  },
+
+  /** The same card once a plan is connected and a model has been chosen. */
+  chatgptConnected: {
+    async run() {
+      const p = probe();
+      await pinChat();
+      p.overrideConfig(Object.assign({}, CHATGPT_CONFIG, { chatgptModel: 'example-standard' }));
+      await settle(800);
+      p.overrideChatGptStatus(CHATGPT_CONNECTED, CHATGPT_MODELS);
+      await settle();
+    },
+  },
+
+  /** Settings, on the subscription method's own pane. */
+  settingsChatgpt: {
+    async run() {
+      const p = probe();
+      await pinChat();
+      p.overrideConfig(CHATGPT_READY);
+      click('btn-settings');
+      click('tab-advanced');
+      await settle(800);
+      p.overrideChatGptStatus(CHATGPT_CONNECTED, CHATGPT_MODELS);
       await settle();
     },
   },

@@ -20,6 +20,17 @@
         <span id="chat-name" class="who-name muted">No chat open</span>
         <span id="chat-phone" class="who-phone"></span>
       </div>
+      <!--
+        The connection indicator. It sits here rather than inside Settings
+        because "which AI is answering, and is it working" is a question about
+        the reply the panel is showing, not a preference. Clicking it opens the
+        same settings pane the ⚙ button does.
+      -->
+      <button id="btn-conn" class="conn-pill" type="button" title="AI connection" aria-label="AI connection">
+        <span id="conn-dot" class="conn-dot" aria-hidden="true"></span>
+        <span id="conn-label" class="conn-text">Not set up</span>
+      </button>
+
       <button id="btn-settings" class="icon-btn" type="button" title="AI settings" aria-label="AI settings" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"></circle>
@@ -45,58 +56,132 @@
 
         <div class="step-head">
           <span class="step-num">1</span>
-          <span class="step-name">Connect your AI provider</span>
+          <span class="step-name">Connect your AI</span>
         </div>
         <p class="step-body">
-          To generate replies, you'll need an API key from an OpenAI-compatible AI provider.
+          Two ways to do this. Pick the one you already pay for — you can change
+          it later without losing anything.
         </p>
 
-        <label class="field">
-          <span class="field-label">API Base URL <span class="req">Required</span></span>
-          <input id="su-baseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
-        </label>
-
-        <label class="field">
-          <span class="field-label">API Key <span class="req">Required</span></span>
-          <span class="key-row">
-            <input id="su-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="the key from your provider" />
-            <button id="su-toggle-key" class="ghost tiny" type="button">Show</button>
-          </span>
-        </label>
-
-        <label class="field">
-          <span class="field-label">Model ID <span class="req">Required</span></span>
-          <input id="su-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
-        </label>
-
-        <label class="field">
-          <span class="field-label">Fallback Base URL <span class="opt">Optional</span></span>
-          <input id="su-fallback" type="text" spellcheck="false" placeholder="only used if the first address cannot be reached" />
-        </label>
-
-        <div class="row">
-          <button id="su-test" class="ghost" type="button">Test Connection</button>
-          <button id="su-save" class="primary" type="button">Save &amp; Continue</button>
+        <div id="su-modes" class="seg modes" role="group" aria-label="How to connect">
+          <button class="seg-btn" type="button" data-mode="chatgpt">ChatGPT subscription</button>
+          <button class="seg-btn" type="button" data-mode="apiKey">Your own API key</button>
         </div>
-        <div id="su-result" class="test-result hidden"></div>
+        <p id="su-mode-hint" class="hint"></p>
 
-        <details class="help">
-          <summary>Where do I find these details?</summary>
-          <div class="help-body">
-            <p>
-              They come from the AI service you already have an account with — this extension
-              does not provide AI by itself, and does not recommend one provider over another.
-            </p>
-            <ul>
-              <li><b>API Base URL</b> — in your provider's developer or API documentation. It looks like a web address, usually ending in <code>/v1</code>.</li>
-              <li><b>API Key</b> — in your provider's dashboard, under API keys. Copy the whole key; it does not have to start with any particular letters.</li>
-              <li><b>Model ID</b> — the exact name of the model you want to use, as your provider writes it.</li>
-            </ul>
-            <p>
-              You can change any of this later from the ⚙ button at the top right.
-            </p>
+        <!--
+          ============ ChatGPT subscription ============
+
+          This pane is honest about the one thing that makes it different from
+          the other: it needs a small program running on this computer. That is
+          not an implementation detail the user can be spared — without the
+          helper running, the button below cannot work at all, so it is stated
+          before the button rather than in an error afterwards.
+
+          The sign-in itself happens in a real browser tab, because the sign-in
+          contract for this flow only accepts a callback to a listener on
+          127.0.0.1, and an extension cannot open one. See docs/ARCHITECTURE.md.
+        -->
+        <div id="su-chatgpt" class="pane hidden">
+          <div id="su-cg-status" class="conn-status">Checking the local helper…</div>
+
+          <div class="row">
+            <button id="su-cg-signin" class="primary" type="button">Continue with ChatGPT</button>
+            <button id="su-cg-signout" class="ghost tiny hidden" type="button">Sign out</button>
           </div>
-        </details>
+
+          <label class="field">
+            <span class="field-label">Model <span class="req">Required</span></span>
+            <select id="su-cg-model"></select>
+          </label>
+          <p id="su-cg-model-hint" class="hint"></p>
+
+          <div class="row">
+            <button id="su-cg-refresh" class="ghost tiny" type="button">Refresh models</button>
+            <button id="su-cg-save" class="primary" type="button">Save &amp; Continue</button>
+          </div>
+          <div id="su-cg-result" class="test-result hidden"></div>
+
+          <details class="help">
+            <summary>Do I need to install anything?</summary>
+            <div class="help-body">
+              <p>
+                Yes — one small program, which you run once and leave running. It is
+                part of this project and it is what holds your ChatGPT sign-in:
+                your browser never sees the credential, and neither does this
+                extension.
+              </p>
+              <p>From the folder you downloaded, run:</p>
+              <p><code id="su-cg-cmd">node helper/siwc-helper.js</code></p>
+              <p>
+                It needs Node.js 20 or later. There is nothing to install first —
+                the helper has no dependencies.
+              </p>
+              <p>
+                Signing in opens a normal browser tab at openai.com. If your
+                ChatGPT account is not eligible for this, or you would rather not
+                use it, switch to <b>Your own API key</b> above — that method
+                needs nothing installed and works with any OpenAI-compatible
+                provider.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <!-- ============ Your own API key ============ -->
+        <div id="su-apikey" class="pane hidden">
+          <p class="step-body">
+            Enter the details from the AI provider you already have an account
+            with.
+          </p>
+
+          <label class="field">
+            <span class="field-label">API Base URL <span class="req">Required</span></span>
+            <input id="su-baseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
+          </label>
+
+          <label class="field">
+            <span class="field-label">API Key <span class="req">Required</span></span>
+            <span class="key-row">
+              <input id="su-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="the key from your provider" />
+              <button id="su-toggle-key" class="ghost tiny" type="button">Show</button>
+            </span>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Model ID <span class="req">Required</span></span>
+            <input id="su-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
+          </label>
+
+          <label class="field">
+            <span class="field-label">Fallback Base URL <span class="opt">Optional</span></span>
+            <input id="su-fallback" type="text" spellcheck="false" placeholder="only used if the first address cannot be reached" />
+          </label>
+
+          <div class="row">
+            <button id="su-test" class="ghost" type="button">Test Connection</button>
+            <button id="su-save" class="primary" type="button">Save &amp; Continue</button>
+          </div>
+          <div id="su-result" class="test-result hidden"></div>
+
+          <details class="help">
+            <summary>Where do I find these details?</summary>
+            <div class="help-body">
+              <p>
+                They come from the AI service you already have an account with — this extension
+                does not provide AI by itself, and does not recommend one provider over another.
+              </p>
+              <ul>
+                <li><b>API Base URL</b> — in your provider's developer or API documentation. It looks like a web address, usually ending in <code>/v1</code>.</li>
+                <li><b>API Key</b> — in your provider's dashboard, under API keys. Copy the whole key; it does not have to start with any particular letters.</li>
+                <li><b>Model ID</b> — the exact name of the model you want to use, as your provider writes it.</li>
+              </ul>
+              <p>
+                You can change any of this later from the ⚙ button at the top right.
+              </p>
+            </div>
+          </details>
+        </div>
       </section>
 
       <!--
@@ -164,28 +249,110 @@
 
         <!-- ---------- Advanced ---------- -->
         <div id="pane-advanced" class="pane hidden">
-          <label>
-            Primary Base URL
-            <input id="cfg-primaryBaseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
-          </label>
+          <!--
+            The connection block. Both methods' settings live on this screen at
+            once, and only the active one is on show — but the inactive one's
+            values stay in the form and are saved with it. That is what makes
+            switching methods a two-way door: trying the ChatGPT path and going
+            back to an API key does not mean retyping the key.
+          -->
+          <div class="conn-head">AI connection</div>
+          <div id="cfg-modes" class="seg modes" role="group" aria-label="How to connect">
+            <button class="seg-btn" type="button" data-mode="chatgpt">ChatGPT subscription</button>
+            <button class="seg-btn" type="button" data-mode="apiKey">Your own API key</button>
+          </div>
+          <p id="cfg-mode-hint" class="hint"></p>
 
-          <label>
-            Fallback Base URL
-            <input id="cfg-fallbackBaseUrl" type="text" spellcheck="false" placeholder="optional" />
-          </label>
+          <div id="cfg-chatgpt" class="pane">
+            <div id="cfg-cg-status" class="conn-status">Checking the local helper…</div>
 
-          <label>
-            API Key
-            <span class="key-row">
-              <input id="cfg-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="your provider's API key" />
-              <button id="btn-toggle-key" class="ghost tiny" type="button">Show</button>
-            </span>
-          </label>
+            <div class="row">
+              <button id="cfg-cg-signin" class="primary" type="button">Continue with ChatGPT</button>
+              <button id="cfg-cg-signout" class="ghost tiny hidden" type="button">Sign out</button>
+            </div>
 
-          <label>
-            Model ID
-            <input id="cfg-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
-          </label>
+            <label>
+              Model
+              <select id="cfg-cg-model"></select>
+            </label>
+            <p id="cfg-cg-model-hint" class="hint"></p>
+
+            <div class="row">
+              <button id="cfg-cg-refresh" class="ghost tiny" type="button">Refresh models</button>
+              <button id="cfg-cg-test" class="ghost tiny" type="button">Send a test request</button>
+            </div>
+
+            <label>
+              Helper address
+              <input id="cfg-helperUrl" type="text" spellcheck="false" placeholder="http://127.0.0.1:8788" />
+            </label>
+
+            <details class="help">
+              <summary>What is the local helper?</summary>
+              <div class="help-body">
+                <p>
+                  A small program that runs on this computer and holds your ChatGPT
+                  sign-in. OpenAI's sign-in for open-source apps only accepts a
+                  callback to <code>127.0.0.1</code>, which a browser extension
+                  cannot provide, so this extension asks the helper to do it.
+                </p>
+                <p>Start it with:</p>
+                <p><code id="cfg-cg-cmd">node helper/siwc-helper.js</code></p>
+                <p>
+                  <b>Send a test request</b> spends a little of your plan's
+                  allowance. <b>Test Connection</b> below does not — it only
+                  checks that the helper is running, that you are signed in, and
+                  that the model is one your account has.
+                </p>
+              </div>
+            </details>
+
+            <div id="cg-test-result" class="test-result hidden"></div>
+          </div>
+
+          <div id="cfg-apikey" class="pane">
+            <label>
+              Primary Base URL
+              <input id="cfg-primaryBaseUrl" type="text" spellcheck="false" placeholder="https://api.your-provider.com/v1" />
+            </label>
+
+            <label>
+              Fallback Base URL
+              <input id="cfg-fallbackBaseUrl" type="text" spellcheck="false" placeholder="optional" />
+            </label>
+
+            <label>
+              API Key
+              <span class="key-row">
+                <input id="cfg-apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="your provider's API key" />
+                <button id="btn-toggle-key" class="ghost tiny" type="button">Show</button>
+              </span>
+            </label>
+
+            <label>
+              Model ID
+              <input id="cfg-model" type="text" spellcheck="false" placeholder="the model name your provider gave you" />
+            </label>
+
+            <div class="row">
+              <button id="btn-test" class="ghost" type="button">Test Connection</button>
+              <button id="btn-clear-key" class="ghost danger tiny" type="button">Clear stored API key</button>
+            </div>
+            <div id="test-result" class="test-result hidden"></div>
+          </div>
+
+          <!--
+            These two apply to the API-key method only, so they sit outside the
+            connection block and say so. The subscription path takes neither:
+            OpenAI's flow for open-source clients rejects `temperature` and the
+            token ceilings outright, which is why the ChatGPT pane cannot offer
+            them rather than offering them and ignoring the values.
+          -->
+          <div class="conn-head">Reply tuning</div>
+          <p class="hint">
+            These apply to the <b>API key</b> method. The ChatGPT subscription
+            path fixes them itself and cannot accept them.
+          </p>
 
           <div class="row">
             <label>
@@ -207,12 +374,6 @@
             Transcript character cap
             <input id="cfg-maxChars" type="number" step="1000" min="1000" max="100000" />
           </label>
-
-          <div class="row">
-            <button id="btn-test" class="ghost" type="button">Test Connection</button>
-            <button id="btn-clear-key" class="ghost danger tiny" type="button">Clear stored API key</button>
-          </div>
-          <div id="test-result" class="test-result hidden"></div>
         </div>
 
         <div class="row">

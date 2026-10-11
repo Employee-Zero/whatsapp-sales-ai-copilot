@@ -53,13 +53,16 @@ const EXTENSIONS_PAGE = { file: '00-chrome-extensions.png', width: 1000, height:
  * means updating the pages that embed it.
  */
 const SCENES = [
-  { scene: 'setup', file: '01-first-run-setup.png', height: 1030 },
-  { scene: 'connected', file: '02-connect-your-ai.png', height: 1130 },
-  { scene: 'quickstart', file: '03-what-to-do-next.png', height: 620 },
+  { scene: 'setup', file: '01-first-run-setup.png', height: 1160 },
+  { scene: 'connected', file: '02-connect-your-ai.png', height: 1260 },
+  { scene: 'quickstart', file: '03-what-to-do-next.png', height: 800 },
   { scene: 'reply', file: '04-generated-draft.png', height: 820 },
   { scene: 'instruction', file: '05-per-chat-instruction.png', height: 820 },
   { scene: 'followup', file: '06-followup-confirmation.png', height: 820 },
-  { scene: 'settingsAdvanced', file: '07-settings.png', height: 960 },
+  { scene: 'settingsAdvanced', file: '07-settings.png', height: 1400 },
+  { scene: 'chatgpt', file: '08-chatgpt-helper-off.png', height: 1180 },
+  { scene: 'chatgptConnected', file: '09-chatgpt-connected.png', height: 1180 },
+  { scene: 'settingsChatgpt', file: '10-settings-chatgpt.png', height: 1400 },
 ];
 
 function arg(name, fallback) {

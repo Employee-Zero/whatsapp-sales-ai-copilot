@@ -34,6 +34,13 @@ const MSG = Object.freeze({
   SET_AI_CONFIG: 'WA_FOLLOWUP_SET_AI_CONFIG',
   CLEAR_API_KEY: 'WA_FOLLOWUP_CLEAR_API_KEY',
   TEST_CONNECTION: 'WA_FOLLOWUP_TEST_CONNECTION',
+  // side panel → worker: the ChatGPT-subscription connection, which lives in the
+  // local helper rather than in this extension. See CHATGPT_HELPER_* below.
+  CHATGPT_STATUS: 'WA_FOLLOWUP_CHATGPT_STATUS',
+  CHATGPT_SIGN_IN: 'WA_FOLLOWUP_CHATGPT_SIGN_IN',
+  CHATGPT_SIGN_OUT: 'WA_FOLLOWUP_CHATGPT_SIGN_OUT',
+  CHATGPT_MODELS: 'WA_FOLLOWUP_CHATGPT_MODELS',
+  CHATGPT_TEST_REQUEST: 'WA_FOLLOWUP_CHATGPT_TEST_REQUEST',
 });
 
 /** chrome.storage.local keys. */
@@ -231,8 +238,96 @@ const INSTRUCTION_LIMITS = Object.freeze({
 /**
  * Bumped whenever a value already sitting in storage needs reinterpreting.
  * `migrateStoredConfig` in utils.js is what acts on it.
+ *
+ * Still 3 after `connectionMode` was added. That field is *additive*: an install
+ * that has never heard of it must keep behaving exactly as it did, and it does —
+ * `connectionModeOf()` below reads anything that is not the ChatGPT value as
+ * "API key", which is what the v3 build did unconditionally. Nothing already in
+ * storage needs reinterpreting, so bumping the version would be a lie that
+ * `tools/test-chatgpt.js` would then have to work around.
  */
 const CONFIG_VERSION = 3;
+
+/**
+ * How the extension reaches a model.
+ *
+ * Two methods, one at a time. They are stored side by side in the same config
+ * record — switching method must never discard the other one's settings, because
+ * "try the subscription, keep my key" and "the subscription lapsed, go back to
+ * my key" are both normal things for a user to do.
+ *
+ *   apiKey  → any OpenAI-compatible `POST /chat/completions`, from the service
+ *             worker, with the user's own key. Unchanged since v0.1.0.
+ *   chatgpt → the user's own ChatGPT plan, over the Responses API, through the
+ *             local helper. The extension holds NO token for this: OpenAI's
+ *             Sign-in-with-ChatGPT documentation requires the credential to live
+ *             in a protected local file, and the browser is not that. The helper
+ *             is the credential holder and this extension is only a client of it.
+ */
+const CONNECTION_MODE = Object.freeze({
+  API_KEY: 'apiKey',
+  CHATGPT: 'chatgpt',
+});
+
+/**
+ * Presentation for the two methods. The order here is the order they are offered
+ * in: the subscription first, the API key second, because the subscription is
+ * the one that needs no separate account with a provider.
+ */
+const CONNECTION_MODE_SPECS = Object.freeze({
+  chatgpt: {
+    label: 'ChatGPT subscription',
+    short: 'ChatGPT',
+    hint: 'Use your own ChatGPT Plus or Pro plan. Needs the local helper running on this computer.',
+  },
+  apiKey: {
+    label: 'Your own API key',
+    short: 'API key',
+    hint: 'Any OpenAI-compatible provider. Works on its own, with nothing else to install.',
+  },
+});
+
+/**
+ * Local helper that owns the ChatGPT-plan credential.
+ *
+ * Loopback on `127.0.0.1`, never `localhost`. That is not a style choice: the
+ * documented OAuth contract for this flow accepts a loopback callback on
+ * `127.0.0.1` and states that `localhost` does not match it. The helper binds
+ * `127.0.0.1`, so one address serves both the callback and the extension's API
+ * calls — see `docs/ARCHITECTURE.md`.
+ */
+const CHATGPT_HELPER_DEFAULT_URL = 'http://127.0.0.1:8788';
+
+/** Helper endpoints, relative to its base URL. */
+const CHATGPT_HELPER_PATHS = Object.freeze({
+  HEALTH: '/health',
+  AUTH_START: '/auth/start',
+  AUTH_STATUS: '/auth/status',
+  AUTH_SIGN_OUT: '/auth/sign-out',
+  MODELS: '/models',
+  GENERATE: '/generate',
+  TEST: '/test',
+});
+
+/**
+ * The exact scope set this flow asks for, and the resource it is scoped to.
+ *
+ * `openid profile email` is the identity half. The rest is ChatGPT plan usage:
+ * `offline_access` is what returns a refresh token, `resource.invoke` and
+ * `chatgpt.tokens.use.direct` are what authorise the subscription itself.
+ *
+ * Note where these come from: the published Sign-in-with-ChatGPT pages, not from
+ * the OIDC discovery document. That document lists only the four identity scopes
+ * — reading the scope list out of discovery would silently drop plan access.
+ *
+ * `chatgpt.tokens.use.direct` is checked before any inference, because the
+ * documentation is explicit that a valid ID token alone does not authorise plan
+ * usage: a user who declines the plan scopes still signs in successfully, and
+ * the app has to notice.
+ */
+const CHATGPT_SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
+const CHATGPT_RESOURCE = 'https://api.openai.com/v1';
+const CHATGPT_PLAN_SCOPE = 'chatgpt.tokens.use.direct';
 
 /**
  * Default AI configuration.
@@ -254,10 +349,23 @@ const CONFIG_VERSION = 3;
 const DEFAULT_AI_CONFIG = Object.freeze({
   /** Bumped when a stored value needs reinterpreting — see `migrateConfig`. */
   configVersion: CONFIG_VERSION,
+  /** apiKey | chatgpt — see CONNECTION_MODE. Existing installs default to apiKey. */
+  connectionMode: CONNECTION_MODE.API_KEY,
   primaryBaseUrl: '',
   fallbackBaseUrl: '',
   apiKey: '',
   model: '',
+  /**
+   * The model used in ChatGPT mode, kept separate from `model` on purpose.
+   *
+   * The two methods have different catalogues: `model` is whatever the user's
+   * provider calls a model, `chatgptModel` is a `slug` from their ChatGPT
+   * account's own list. One shared field would mean switching method silently
+   * replaced the other one's answer.
+   */
+  chatgptModel: '',
+  /** Where the local helper listens. See CHATGPT_HELPER_DEFAULT_URL. */
+  helperUrl: CHATGPT_HELPER_DEFAULT_URL,
   temperature: 0.4,
   /**
    * 0 = derive the ceiling from reply length + thinking depth.
@@ -287,23 +395,53 @@ const DEFAULT_AI_CONFIG = Object.freeze({
  */
 const REQUIRED_AI_FIELDS = Object.freeze(['primaryBaseUrl', 'apiKey', 'model']);
 
+/**
+ * The same question for ChatGPT mode.
+ *
+ * Only the model. Whether the helper is running and whether an account is signed
+ * in are *live* facts, not stored ones, so they cannot be answered by looking at
+ * the config — the worker checks them against the helper at the moment of the
+ * request, and the panel shows them as connection status. Keeping them out of
+ * here is what lets `missingAiFields` stay a pure function that a test can call.
+ */
+const REQUIRED_CHATGPT_FIELDS = Object.freeze(['chatgptModel']);
+
 /** Human labels for those fields, for messages that name what is missing. */
 const AI_FIELD_LABELS = Object.freeze({
   primaryBaseUrl: 'API Base URL',
   fallbackBaseUrl: 'Fallback Base URL',
   apiKey: 'API Key',
   model: 'Model ID',
+  chatgptModel: 'Model',
+  helperUrl: 'Helper address',
 });
 
 /**
- * Which required fields are still blank.
+ * Which connection method a config is using.
+ *
+ * Anything that is not exactly the ChatGPT value reads as API key. That is the
+ * behaviour every build before this one had, so an upgrade cannot change how an
+ * existing install talks to its provider — including a config written by a
+ * newer build that this one does not understand.
+ *
+ * @param {object} cfg
+ * @returns {string} one of CONNECTION_MODE
+ */
+function connectionModeOf(cfg) {
+  const mode = cfg && cfg.connectionMode;
+  return mode === CONNECTION_MODE.CHATGPT ? CONNECTION_MODE.CHATGPT : CONNECTION_MODE.API_KEY;
+}
+
+/**
+ * Which required fields are still blank, for the method in use.
  *
  * @param {object} cfg
  * @returns {string[]} field names, empty when the config is usable
  */
 function missingAiFields(cfg) {
   const c = cfg || {};
-  return REQUIRED_AI_FIELDS.filter((key) => !String(c[key] == null ? '' : c[key]).trim());
+  const fields = connectionModeOf(c) === CONNECTION_MODE.CHATGPT ? REQUIRED_CHATGPT_FIELDS : REQUIRED_AI_FIELDS;
+  return fields.filter((key) => !String(c[key] == null ? '' : c[key]).trim());
 }
 
 /**
@@ -321,10 +459,13 @@ function hasRequiredConfig(cfg) {
  * never inject unexpected fields into an AI request.
  */
 const AI_CONFIG_STRING_KEYS = Object.freeze([
+  'connectionMode',
   'primaryBaseUrl',
   'fallbackBaseUrl',
   'apiKey',
   'model',
+  'chatgptModel',
+  'helperUrl',
   'replyLength',
   'thinking',
   'systemPrompt',
@@ -384,6 +525,28 @@ const ERR = Object.freeze({
   AI_AUTH_FAILED: 'AI_AUTHENTICATION_FAILED',
   AI_EMPTY: 'AI_RETURNED_EMPTY',
   AI_TRUNCATED: 'AI_REPLY_TRUNCATED',
+  // ChatGPT-subscription connection (the local helper)
+  /** Nothing is listening on the helper's loopback port. */
+  HELPER_UNREACHABLE: 'CHATGPT_HELPER_UNREACHABLE',
+  /** The helper is running but no ChatGPT account is signed in. */
+  CHATGPT_NOT_SIGNED_IN: 'CHATGPT_NOT_SIGNED_IN',
+  /** Signed in, but the account did not grant ChatGPT plan usage. */
+  CHATGPT_NO_PLAN_SCOPE: 'CHATGPT_PLAN_NOT_AUTHORIZED',
+  /** The account is not eligible for plan usage in an app like this one. */
+  CHATGPT_NOT_ELIGIBLE: 'CHATGPT_NOT_ELIGIBLE',
+  /** Plan allowance (or an app-specific limit) is used up. */
+  CHATGPT_USAGE_LIMIT: 'CHATGPT_USAGE_LIMIT_EXCEEDED',
+  /** Availability could not be checked — retry later, credentials are fine. */
+  CHATGPT_UNAVAILABLE: 'CHATGPT_USAGE_UNAVAILABLE',
+  /** The helper answered, but with a failure this build does not recognise. */
+  CHATGPT_FAILED: 'CHATGPT_REQUEST_FAILED',
+  /**
+   * The helper is running but cannot read OpenAI's own sign-in configuration.
+   * Nothing about the account is wrong — this is their side, or a machine that
+   * cannot reach auth.openai.com — and the advice is different, which is why it
+   * is not folded into CHATGPT_FAILED.
+   */
+  HELPER_CONFIG_INVALID: 'CONFIG_INVALID',
   WHATSAPP_NOT_OPEN: 'WHATSAPP_WEB_NOT_OPEN',
   BUSY: 'OPERATION_ALREADY_RUNNING',
   TIMEOUT: 'TIMEOUT',
@@ -444,8 +607,17 @@ export {
   CONFIG_VERSION,
   DEFAULT_SYSTEM_PROMPT,
   LEGACY_SYSTEM_PROMPT_VENDING,
+  CONNECTION_MODE,
+  CONNECTION_MODE_SPECS,
+  CHATGPT_HELPER_DEFAULT_URL,
+  CHATGPT_HELPER_PATHS,
+  CHATGPT_SCOPES,
+  CHATGPT_RESOURCE,
+  CHATGPT_PLAN_SCOPE,
   REQUIRED_AI_FIELDS,
+  REQUIRED_CHATGPT_FIELDS,
   AI_FIELD_LABELS,
+  connectionModeOf,
   missingAiFields,
   hasRequiredConfig,
   REPLY_LENGTH,

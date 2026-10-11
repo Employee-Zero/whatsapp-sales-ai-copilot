@@ -14,15 +14,19 @@ the environment facts and measured limits see `docs/DEVELOPMENT.md` (section 2).
 | Item | Requirement |
 |---|---|
 | Chrome | 116 or newer. `manifest.json` sets `"minimum_chrome_version": "116"` |
-| Node.js | Only to run the scripts in `tools/`. There is no `package.json`, no `node_modules`, and no npm dependency anywhere in the repository |
+| Node.js | Only to run the scripts in `tools/`, and to run the local helper. The extension itself has no `package.json`, no `node_modules` and no npm dependency anywhere; the helper is its own package with an empty `dependencies` object and needs **Node 20 or newer** |
 | Extension install | unpacked, from `chrome://extensions` |
-| AI provider | An OpenAI-compatible chat-completions endpoint, configured at runtime. The repository ships no key and no default provider |
+| AI provider | An OpenAI-compatible chat-completions endpoint, configured at runtime, or the user's own ChatGPT plan through the local helper (§10). The repository ships no key and no default provider |
 
 Node built-ins used by `tools/`: `node:http`, `node:child_process`, `node:fs`,
 `node:path`, `node:crypto`, `node:vm`, `node:os`. The CDP helpers in
 `tools/cdp.js` additionally rely on the global `fetch` and the global
 `WebSocket`, which Node only exposes from v22 onward. Everything on the test
 bridge path works on much older Node; only the CDP path needs v22+.
+
+The helper uses `node:http`, `node:crypto`, `node:fs`, `node:os`, `node:path` and
+`node:url`, and nothing outside the standard library. Its `engines.node` field
+requires 20 or later, which is what `AbortSignal.any` needs.
 
 ### Load unpacked
 
@@ -62,7 +66,8 @@ whatsapp-followup-extension/
 │   │   ├── whatsapp-adapter.js all WhatsApp DOM reading and writing
 │   │   └── content-script.js   message routing, chat identity guard, accumulator
 │   ├── ai/
-│   │   └── ai-client.js        request assembly, fallback, error classification
+│   │   ├── ai-client.js        request assembly, fallback, error classification
+│   │   └── chatgpt-client.js   HTTP client for the local helper; holds no credential
 │   ├── sidepanel/
 │   │   ├── sidepanel.html
 │   │   ├── sidepanel.css
@@ -78,6 +83,11 @@ whatsapp-followup-extension/
 │       ├── panel-probe.classic.js
 │       ├── shots.html          screenshot harness
 │       └── shots.js
+├── helper/                     the local helper — a separate Node package (see §10); not extension code
+│   ├── siwc-helper.js          HTTP server, OAuth sign-in, token lifecycle, CLI
+│   ├── lib/                    guard, oauth, pkce, responses, store, errors, constants
+│   ├── package.json            type: module, engines.node >= 20, no dependencies
+│   └── README.md               the user-facing guide for this connection method
 ├── tools/                      Node scripts; never shipped
 ├── docs/
 │   ├── GETTING_STARTED.md      the salesperson's install guide
@@ -91,6 +101,7 @@ whatsapp-followup-extension/
 ```
 
 There is no build step for `src/`. The extension loads these files as they are.
+There is no build step for `helper/` either: it is plain ESM run by Node.
 
 ---
 
@@ -198,6 +209,24 @@ timeouts — switch to the fallback host. `401`, `403`, `404`, `429`,
 `model_not_found` and `bad_request` do not: those are configuration errors, and
 switching hosts would only hide them while doubling the latency.
 
+**The ChatGPT method shares everything above and changes only the last leg.**
+`generateReply()` reads the config, applies the configuration gate, trims the
+context window and assembles the same system prompt and the same user message;
+then, when `connectionModeOf(cfg)` is `chatgpt`, it hands those two strings to
+`chatgpt-client.js` instead of calling `callWithFallback()`. The helper receives
+`{ model: cfg.chatgptModel, instructions, input, timeoutMs }` and puts them into
+the Responses API's two fields (`docs/ARCHITECTURE.md` §14.7). Three
+consequences are worth knowing before touching this code:
+
+- `temperature` and the token ceiling are not sent, and cannot be. The flow
+  rejects those parameters outright, so the panel labels both settings as
+  applying to the API-key method and does not offer them on the ChatGPT pane.
+- There is no retry with a larger budget on this path. The budget is not ours to
+  raise, so a reply that comes back with no text is reported as
+  `AI_RETURNED_EMPTY` rather than retried.
+- The fallback host does not exist here either. There is one helper address, and
+  a failure to reach it is reported as such.
+
 ---
 
 ## 5. The four verification paths
@@ -207,10 +236,16 @@ question.
 
 | Path | Browser | CDP | Use it for |
 |---|---|---|---|
-| **A. Offline logic tests** | no | no | Pure functions, constants, protocol contracts, prompt contract, panel wiring greps. `node tools/test-safety.js` |
+| **A. Offline logic tests** | no | no | Pure functions, constants, protocol contracts, prompt contract, panel wiring greps. `node tools/test-safety.js` and `node tools/test-helper.js` |
 | **B. Manual real-browser** | yes, the profile you use daily | no | Real clicks, real sending, login-state questions, anything about how WhatsApp actually behaves |
 | **C. Test bridge** | yes, the profile you use daily | no | Driving the real panel DOM, reading computed styles, capturing outgoing request bodies, batch assertions |
-| **D. Release verification** | yes, a throwaway profile | no | Whether the artefact about to be published actually installs. `node tools/verify-release.js <zip>` |
+| **D. Release verification** | yes, a throwaway profile | no | Whether the artefacts about to be published actually install and run. `node tools/verify-release.js <zip>` |
+
+Path A is two suites. `node tools/test-safety.js` covers the extension — 345
+assertions, and one of its sections asserts that the subscription path does not
+disturb the API-key path. `node tools/test-helper.js` covers the helper — 264
+assertions; §10 has what it exercises. Neither needs a browser, a ChatGPT account
+or a request to anything outside the machine.
 
 Path A is the only one that is safe to run at any time and needs no setup; run it
 before and after every change to shared logic. Path B is the only way to confirm
@@ -360,56 +395,73 @@ node tools/bridge-server.js   # holds the port open; Ctrl-C to stop
 
 ```bash
 node tools/build-classic.js --check   # the generated copies must match
-node tools/test-safety.js             # offline tests must pass
-node tools/build-release.js           # writes dist/
+node tools/test-safety.js             # the extension's offline tests must pass
+node tools/test-helper.js             # the helper's offline tests must pass
+node tools/build-release.js           # writes both archives to dist/
 node tools/verify-release.js dist/whatsapp-sales-ai-copilot-0.1.0.zip
 ```
 
-`tools/build-release.js` produces
-`dist/whatsapp-sales-ai-copilot-<version>.zip`, taking the version from
-`manifest.json`. The layout is:
+`tools/build-release.js` produces two archives, because there are two things to
+install. The extension takes its version from `manifest.json`:
 
 ```
-whatsapp-sales-ai-copilot-<version>.zip
+whatsapp-sales-ai-copilot-<version>.zip          the extension
 ├── manifest.json          at the archive root, not in a subdirectory
 └── src/                   everything under src/ except src/test/
+
+whatsapp-sales-ai-copilot-helper-<version>.zip   the local helper (see §10)
+└── helper/                siwc-helper.js, lib/, package.json, README.md
 ```
 
-Nothing else. The archive must be loadable as-is: unzip it, point **Load
-unpacked** at the unzipped directory, and the extension loads and runs. That
-means `manifest.json` has to sit at the top level of the archive, since Chrome
-reads it from the directory root.
+Nothing else in either. The extension archive must be loadable as-is: unzip it,
+point **Load unpacked** at the unzipped directory, and the extension loads and
+runs. That means `manifest.json` has to sit at the top level of the archive,
+since Chrome reads it from the directory root.
 
-The build checks that rather than assuming it. Every file the manifest names
+The helper archive keeps the `helper/` prefix, so extracting it next to the
+extension produces exactly the path the panel tells the user to run
+(`node helper/siwc-helper.js`). It is a separate download on purpose: a Node
+program has no place inside a browser extension's package, the API-key method
+needs neither the download nor Node, and one combined archive would make everyone
+pay for a feature most of them do not use.
+
+The build checks both rather than assuming either. Every file the manifest names
 must be present, and nothing may be present that is not the manifest or under
-`src/` — so a stray file fails the build instead of shipping quietly.
+`src/` — so a stray file fails the build instead of shipping quietly. The helper
+archive must contain its entry point and every library module beside it, since an
+archive missing one extracts cleanly and then cannot be started.
 
-Excluded, and why:
+Excluded from the extension archive, and why:
 
 | Excluded | Reason |
 |---|---|
 | `tools/` | Node scripts for development; the extension never loads them |
 | `src/test/` | the dev bridge and the panel probe (see §9) |
+| `helper/` | the local helper is a Node program and ships as its own archive (§10) |
 | `docs/`, `AGENTS.md`, `README.md` | documentation, not extension code |
 | `.git/` | the archive is built from the tree, never from a clone |
 
 `tools/verify-release.js` is the check that matters before publishing. It
-unzips the archive into a temporary directory, installs it into a **throwaway**
-Chrome for Testing profile with its own `--user-data-dir`, and then asks
+unzips each archive into a temporary directory — the extension into a
+**throwaway** Chrome for Testing profile with its own `--user-data-dir`, the
+helper into a directory it then runs `node helper/siwc-helper.js --status` from,
+with `WHATSAPP_COPILOT_HOME` pointed at an empty directory — and then asks
 Chrome whether the extension is installed, enabled and at the right version,
 whether it raised manifest errors or warnings, whether the service worker
-started, and whether the side panel boots to the welcome screen. None of that
-can be established by reading source.
+started, and whether a fresh install boots to a welcome screen that offers both
+connection methods with the API-key one selected. None of that can be
+established by reading source.
 
-`dist/` is git-ignored: the download lives on the Releases page, built from the
+`dist/` is git-ignored: the downloads live on the Releases page, built from the
 tag, not in the repository.
 
 ### Publishing
 
-`.github/workflows/release.yml` builds the ZIP on a version tag and attaches it
-to the Release with `gh release upload`. It re-runs `build-classic.js --check`
-and the offline suite first, so a tag whose generated copies have drifted fails
-instead of publishing a ZIP that was never built from the tree.
+`.github/workflows/release.yml` builds the archives on a version tag and attaches
+them to the Release with `gh release upload dist/whatsapp-sales-ai-copilot-*.zip
+--clobber`, which picks up both. It re-runs `build-classic.js --check` and the
+offline suite first, so a tag whose generated copies have drifted fails instead
+of publishing a ZIP that was never built from the tree.
 
 The workflow attaches to a Release that already exists. Create the Release for
 the tag first, then push the tag — or run the workflow by hand and give it the
@@ -432,3 +484,101 @@ side panel.
 §7: it has to share the panel's global lexical scope. It is not a generated
 file, despite the matching suffix — only `src/shared/*.classic.js` are
 generated.
+
+---
+
+## 10. The local helper
+
+`helper/` is the second runnable component in this repository. It is a Node
+program, not extension code: nothing under `src/` is packaged with it, and the
+extension archive never contains it. Only the ChatGPT-subscription connection
+method uses it (`docs/ARCHITECTURE.md` §14); the API-key method works with
+nothing else installed.
+
+It exists because the sign-in cannot be done from a browser extension. OpenAI's
+sign-in for open-source and locally hosted apps accepts only an HTTP loopback
+callback on `127.0.0.1`, at a fixed path with only the port free to vary;
+`chrome.identity.launchWebAuthFlow` intercepts only
+`https://<extension-id>.chromiumapp.org/*`, which is not an accepted redirect;
+and an MV3 extension cannot open a listening socket. There is a second reason
+that matters more: the documentation requires tokens to be kept out of browser
+storage, so the credential lives in a file this process owns and the extension is
+never given a token at all. `docs/ARCHITECTURE.md` §14.2 to §14.6 covers the
+design; this section covers running, testing and shipping it.
+
+### Running it
+
+```
+node helper/siwc-helper.js
+```
+
+Run it from the directory that contains `helper/` — the repository root, or the
+directory the helper archive was extracted into. It prints the credential file it
+will use, whether an account is already signed in, and the port it is listening
+on.
+
+| Flag | Effect |
+|---|---|
+| `--port <n>` | Port to listen on. Default `8788`, which is what `CHATGPT_HELPER_DEFAULT_URL` and the panel's Helper address field expect. Must be 1–65535 |
+| `--status` | Print the connection state as JSON and exit. Does not start the server |
+| `--sign-out` | Revoke the session with OpenAI and forget it locally, then exit |
+| `--print-authorize-url` | Start the server, begin a sign-in and print the URL instead of waiting for the extension to ask. For a machine with no browser to hand |
+| `--help` | Usage, including the credential file path for this machine |
+
+An unknown option prints the usage and exits 2. A port that is already in use is
+reported as a sentence naming the port, because the usual cause is a second copy
+of the helper already running, and that is not something a stack trace explains.
+
+The server binds `127.0.0.1` and nothing else — never the wildcard address — and
+refuses any request whose `Host` header is not that address and this port, whose
+`Origin` is a web origin, or that carries a non-JSON body. `node tools/test-helper.js`
+covers each of those refusals.
+
+### Where it keeps the credential
+
+| Platform | Location |
+|---|---|
+| macOS / Linux | `~/.config/whatsapp-sales-ai-copilot/credentials.json` |
+| Windows | `%APPDATA%\whatsapp-sales-ai-copilot\credentials.json` |
+
+The directory is `0700` and the file `0600`, written atomically through a
+temporary file and a `rename`. A missing file is normal and reads as an empty
+store; a corrupt one is reported rather than replaced, since overwriting it would
+destroy the only copy of a refresh token that may still be revocable.
+
+`WHATSAPP_COPILOT_HOME` overrides the whole location. That variable exists for
+testing, and it matters more than it looks: without it a test run would write
+over a real sign-in and delete a real refresh token. `tools/test-helper.js` sets
+it to a temporary directory, and `tools/verify-release.js` sets it when it runs
+the helper out of the built archive.
+
+### Running its tests
+
+```
+node tools/test-helper.js      # 264 assertions
+```
+
+No browser, no ChatGPT account, and nothing leaving the machine: every test
+either calls a pure function directly or replaces `globalThis.fetch` with a stub
+and inspects what would have gone on the wire. It imports the helper's own
+modules from `helper/lib/`, so it cannot drift from the code it is checking.
+
+What it covers: PKCE against the exact bytes that go on the wire, SSE frames
+re-split at every offset and with CRLF, the inference request body's exact key
+set (the subset is the contract — re-adding `temperature` is what produces a
+`subscription_sharing_unsupported_capability` failure), a complete and a
+truncated stream against a stubbed `fetch`, the loopback guards, the credential
+file's modes and atomicity and its handling of a corrupt file, the authorize URL
+parameter by parameter, callback parsing, ID-token validation against a real
+generated RSA keypair, and the helper's duplicated constants against the
+extension's in both directions.
+
+Its last section drives both halves against each other over real HTTP: the
+extension's `chatgpt-client.js` talking to the helper's own `createHandler()` on
+an ephemeral loopback port. That is the one thing neither half's own tests can
+check, and it is why the handler is exported as a factory.
+
+There is no build step, no bundling and no dependency to install — `helper/package.json`
+declares `"type": "module"`, `"engines": { "node": ">=20" }` and an empty
+`dependencies` object. The helper version is kept equal to `manifest.json`'s
+version, and the test asserts that it is.

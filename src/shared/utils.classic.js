@@ -655,6 +655,46 @@ function resolveModelsEndpoint(base) {
 }
 
 /**
+ * The local ChatGPT-plan helper's base URL, as configured.
+ *
+ * Falls back to the documented default rather than to empty: this is a loopback
+ * address with exactly one sensible value, and a blank field would turn into a
+ * request to `undefined/health`.
+ *
+ * Lives here rather than next to the client that uses it because the side panel
+ * needs the same answer for the same field — the panel edits `helperUrl`, and a
+ * second copy of this rule is a second chance to disagree with the worker.
+ *
+ * @param {object} cfg
+ * @returns {string}
+ */
+function helperBaseUrl(cfg) {
+  const raw = normalizeBaseUrl((cfg && cfg.helperUrl) || '');
+  return raw || CHATGPT_HELPER_DEFAULT_URL;
+}
+
+/**
+ * The command a user has to run to get the helper going.
+ *
+ * Shown verbatim in the panel: a user who has just been told "the local helper
+ * is not running" needs the exact line to paste into a terminal, not a
+ * description of it. Derived from the configured URL so a non-default port comes
+ * back with a matching `--port`.
+ *
+ * @param {object} cfg
+ * @returns {string}
+ */
+function helperStartCommand(cfg) {
+  let port = '';
+  try {
+    port = new URL(helperBaseUrl(cfg)).port || '';
+  } catch (err) {
+    /* not a parseable URL — fall back to the default command */
+  }
+  return port && port !== '8788' ? `node helper/siwc-helper.js --port ${port}` : 'node helper/siwc-helper.js';
+}
+
+/**
  * Classify a fetch failure into one of the FALLBACK_ELIGIBLE codes, or null when
  * the failure is a configuration/API error that must NOT trigger a fallback.
  *

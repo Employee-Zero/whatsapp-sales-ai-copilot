@@ -2,7 +2,7 @@
 
 **Product:** WhatsApp Sales AI Copilot
 **Brand:** Employee Zero
-**Version:** 0.1.0 (first public release)
+**Version:** 0.2.0
 **Repository:** https://github.com/Employee-Zero/whatsapp-sales-ai-copilot
 
 ---
@@ -22,7 +22,7 @@ This is a small open-source project maintained on a best-effort basis. There is 
 ### What to include
 
 - A description of the issue and the impact you believe it has.
-- The version of the extension (0.1.0, or whichever version you tested).
+- The version of the extension (0.2.0, or whichever version you tested). If the issue involves the helper, say which component and which release archive you took it from.
 - Your Chrome version and operating system.
 - Clear steps to reproduce, ideally the smallest set of steps that shows the problem.
 - Any proof-of-concept code, screenshots or logs that help. If a screenshot would contain real conversation content or a key, redact it or describe it in words instead.
@@ -57,15 +57,31 @@ The extension's entire purpose is to work inside your already-logged-in WhatsApp
 
 ### The API key is stored unencrypted
 
-- Your AI provider's API key is stored in `chrome.storage.local` on your machine. It is **not encrypted by the extension**.
+- Your AI provider's API key is stored in `chrome.storage.local` on your machine. It is **not encrypted by the extension**. This applies to the API-key method only; if you connect a ChatGPT plan, no key is stored in the browser at all.
 - **Anyone with filesystem access to your browser profile can read it** — including anyone who can run code as your user, malware running as your user, anyone who copies or syncs your profile, and anyone who restores your profile from a backup.
 - The extension limits where the key goes: it is only ever placed in the `Authorization: Bearer …` header of a request to the endpoint you configured. It is never logged and never rendered in the panel (only a masked presence hint). That limits accidental exposure; it does not protect the key at rest.
 - Use a key scoped to only what you need, set spending limits at your provider, and revoke the key if you suspect exposure.
 
+### The ChatGPT subscription credential is held by a local helper
+
+There are two ways to connect an AI provider. The second one — signing in with a ChatGPT plan — involves a small program in `helper/` that you run yourself, on the same computer, with Node.js. This section is about what that does and does not protect.
+
+**Why it is a separate program, not part of the extension.** OpenAI's sign-in for open-source and locally hosted apps accepts only a callback to an HTTP listener on `127.0.0.1`; the path is fixed, only the port may vary, and `localhost` is explicitly not accepted. `chrome.identity.launchWebAuthFlow` only intercepts `https://<extension-id>.chromiumapp.org/*`, which is not an accepted redirect, and an MV3 extension cannot open a listening socket. So the callback has to be received by an ordinary local process. The extension declares no `identity` permission and never calls `launchWebAuthFlow`.
+
+**The same restriction is the security win.** The alternative designs would put the credential where an XSS, a compromised dependency, or a content script could reach it. Instead:
+
+- The credential lives in one file — `~/.config/whatsapp-sales-ai-copilot/credentials.json` on macOS and Linux, `%APPDATA%\whatsapp-sales-ai-copilot\credentials.json` on Windows — created `0700` for the directory and `0600` for the file, written atomically via a temporary file and a rename. On Windows those POSIX modes do not apply and the file inherits your user profile's permissions; `--status` reports which of the two happened.
+- **The extension never receives a token and has no field that could store one.** Credentials are not in `chrome.storage.local`, not in the page, not passed to the WhatsApp content script, and not logged. The helper's log lines name the account's email label and nothing else.
+- The helper binds `127.0.0.1` only — never the wildcard address, so it is not on your local network — and checks every request: the `Host` header must be the loopback address itself (which is what stops a DNS-rebinding attack from a page in your browser reaching it), the `Origin` must be absent or a `chrome-extension://` origin, and the body must be JSON, which forces a cross-origin request into a CORS preflight that the helper then refuses. It never emits an `Access-Control-Allow-Origin` header.
+- **What this does not protect against.** Anyone who can run code as your user can read the credential file, exactly as they could read an API key out of your browser profile, and they can also just call the helper's endpoints. The helper is not a privilege boundary against local malware. It is a boundary against the credential being reachable from web content, which is a different and more commonly exploited thing.
+- **Sign-out revokes.** Signing out from the extension calls the revocation endpoint published in OpenAI's OIDC discovery document, then deletes the file. Deleting the file by hand stops the extension using it but does not revoke it at OpenAI, so sign out rather than only deleting if you want it revoked.
+
 ### Where your conversation data goes
 
-- To generate a reply, conversation text is sent to the AI provider **you configured**. It leaves your machine. The provider's handling of it is governed by that provider's policy, not by this project — see `PRIVACY.md`.
-- The optional host permissions (`https://*/*`, `http://localhost/*`) exist so that the endpoint **you** enter can be reached — a provider of your choice over HTTPS, or a model server on your own machine. They are optional, they are granted per-origin, and **nothing in the shipped extension asks for them**: the only code in the repository that calls `chrome.permissions.request` is the development test bridge, which is not in the release ZIP. Grant them for the origin you actually use, not broadly, if you want the smallest footprint. An optional permission is not a harmless one: once granted, it persists for that Chrome profile until you revoke it on `chrome://extensions`.
+- To generate a reply, conversation text is sent to the AI provider **you configured**. It leaves your machine. The provider's handling of it is governed by that provider's policy, not by this project — see `PRIVACY.md`. With the subscription method the provider is OpenAI, and the request goes to the public Responses API, not to any ChatGPT-internal endpoint.
+- The optional host permissions are requested at the moment they are needed and are never granted up front. The extension asks for `http://127.0.0.1/*` when you click **Continue with ChatGPT**, because the helper listens there; that is the only permission the shipped extension ever requests by itself. The wider ones (`https://*/*`, `http://localhost/*`) exist so an endpoint **you** type into Settings can be reached, and nothing in the shipped extension asks for them — they are there for the case where your provider is not already covered.
+- **An optional permission is not a harmless one.** Once granted, it persists for that Chrome profile until you revoke it on `chrome://extensions`. The loopback grant lets the extension talk to anything else listening on `127.0.0.1` that does not defend itself, so grant it only if you intend to use the subscription method, and revoke it if you stop.
+- The development test bridge (`src/test/bridge.html`) is the other thing in the repository that calls `chrome.permissions.request`. It is excluded from the release ZIP and is not part of the shipped extension.
 
 ### The send guard, and what it does not do
 
@@ -90,4 +106,8 @@ The repository contains a development-only test bridge (`src/test/bridge.html`) 
 
 ### Scope of this project
 
-There is no backend server, no account system, no subscription and no author-operated service, so there is no server-side surface to attack. The relevant surface is the extension itself, the page it operates on, and the endpoint you configure.
+There is no backend server, no account system, no author-operated subscription and no author-operated service, so there is no server-side surface to attack — that is true of the ChatGPT method as well, because the helper runs on your machine and talks to OpenAI directly. The relevant surface is the extension itself, the page it operates on, the helper process if you run it, and the endpoint you configure.
+
+### Reporting a problem with the helper specifically
+
+If the issue is in `helper/`, say so in the report — it is a separate component with its own release archive, and the fix will ship in that archive rather than in the extension. Reports about the loopback listener's request checks are especially welcome. Do not paste a real credential file into a report; if you need to show its shape, replace every value with a placeholder.

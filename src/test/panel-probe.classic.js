@@ -18,7 +18,9 @@
 /* eslint-env browser */
 /* global renderContext, renderInstruction, syncPanesToChat, readChat,
    renderConfig, renderOnboarding, focusSetup, openFollowupConfirm,
-   closeFollowupConfirm, describeError, el, cfg, onboarding */
+   closeFollowupConfirm, describeError, el, cfg, onboarding,
+   chatgptStatus, chatgptModels, renderChatGptPanes, renderConnectionPill,
+   CONNECTION_MODE */
 
 (function () {
   'use strict';
@@ -414,6 +416,31 @@
   }
 
   /**
+   * Show a ChatGPT-connection state the panel would otherwise only reach with a
+   * real helper running and a real account signed in.
+   *
+   * Documentation needs the connected view; producing it must not require an
+   * account, and must not put one anywhere near a screenshot. Nothing is faked
+   * in the markup — the panel renders from these values exactly as it does from
+   * the helper's answer, so the picture is still the real UI.
+   *
+   * `chatgptStatus` and `chatgptModels` are top-level `let` bindings in
+   * sidepanel.js, which is why this file has to be a classic script: they live
+   * in the global lexical scope and are reachable from here by name, but they
+   * are not properties of `window`.
+   *
+   * @param {object|null} status the shape the worker's CHATGPT_STATUS returns
+   * @param {Array} models the shape GET /models returns
+   */
+  function overrideChatGptStatus(status, models) {
+    chatgptStatus = status;
+    chatgptModels = models || [];
+    renderChatGptPanes({ resetModels: true });
+    renderConnectionPill();
+    return chatgptStatus;
+  }
+
+  /**
    * Remove a few chat ids from the draft and instruction stores.
    *
    * Deliberately surgical where `removeStore` is not: these tests run against
@@ -469,6 +496,7 @@
     ui: ui,
     overrideConfig: overrideConfig,
     restoreConfig: restoreConfig,
+    overrideChatGptStatus: overrideChatGptStatus,
     onboardingState: onboardingState,
     focusSetup: focusSetup,
     openFollowupConfirm: openFollowupConfirm,

@@ -22,14 +22,17 @@ const ROOT = path.resolve(__dirname, '..');
  * classic-script global scope.
  */
 function loadShared() {
-  const sandbox = { console };
+  // `URL` is part of the platform, not of the bundle: the helper-address rules
+  // parse one, and a sandbox without it would exercise the catch branch instead
+  // of the code under test.
+  const sandbox = { console, URL };
   vm.createContext(sandbox);
   const src = ['src/shared/constants.classic.js', 'src/shared/utils.classic.js']
     .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8'))
     .join('\n;\n');
   // `const` declarations live in the script's lexical scope, not on the global
   // object — append an explicit export so the test can read them.
-  vm.runInContext(`${src}\n;globalThis.__shared = {publicContext, instructionBlock, AI_LIMITS, DEFAULT_AI_CONFIG, AI_CONFIG_STRING_KEYS, AI_CONFIG_NUMBER_RANGES, FALLBACK_ELIGIBLE, MESSAGE_DIRECTION, DELIVERY_STATUS_LABELS, STORAGE_KEYS, MSG, ERR, PHONE_STATUS, LOG_PREFIX, WHATSAPP_ORIGIN, DEFAULT_SYSTEM_PROMPT, LEGACY_SYSTEM_PROMPT_VENDING, REQUIRED_AI_FIELDS, AI_FIELD_LABELS, missingAiFields, hasRequiredConfig, REPLY_LENGTH, REPLY_LENGTH_SPECS, THINKING_MODE, THINKING_SPECS, CONTEXT_MESSAGE_CHOICES, MESSAGE_STORE_LIMITS, DRAFT_LIMITS, INSTRUCTION_LIMITS, CONFIG_VERSION};`, sandbox, {
+  vm.runInContext(`${src}\n;globalThis.__shared = {publicContext, instructionBlock, AI_LIMITS, DEFAULT_AI_CONFIG, AI_CONFIG_STRING_KEYS, AI_CONFIG_NUMBER_RANGES, FALLBACK_ELIGIBLE, MESSAGE_DIRECTION, DELIVERY_STATUS_LABELS, STORAGE_KEYS, MSG, ERR, PHONE_STATUS, LOG_PREFIX, WHATSAPP_ORIGIN, DEFAULT_SYSTEM_PROMPT, LEGACY_SYSTEM_PROMPT_VENDING, REQUIRED_AI_FIELDS, REQUIRED_CHATGPT_FIELDS, AI_FIELD_LABELS, missingAiFields, hasRequiredConfig, connectionModeOf, CONNECTION_MODE, CONNECTION_MODE_SPECS, CHATGPT_HELPER_DEFAULT_URL, CHATGPT_HELPER_PATHS, CHATGPT_SCOPES, CHATGPT_RESOURCE, CHATGPT_PLAN_SCOPE, helperBaseUrl, helperStartCommand, REPLY_LENGTH, REPLY_LENGTH_SPECS, THINKING_MODE, THINKING_SPECS, CONTEXT_MESSAGE_CHOICES, MESSAGE_STORE_LIMITS, DRAFT_LIMITS, INSTRUCTION_LIMITS, CONFIG_VERSION};`, sandbox, {
     filename: 'shared-bundle.js',
   });
   return sandbox;
@@ -763,6 +766,125 @@ check(
   workerSrcRaw.indexOf('assertConfigured(') > -1 &&
     workerSrcRaw.indexOf('assertConfigured(') < workerSrcRaw.indexOf('opReadChat()'),
 );
+
+// ---------------------------------------------------------------------------
+
+console.log('\n[28] two connection methods — the subscription must not disturb the key\n');
+
+// The upgrade path. A config written by the previous build has no
+// `connectionMode` at all, and must keep working as an API-key config rather
+// than being treated as unconfigured.
+eq('an old config with no connectionMode reads as apiKey', S.connectionModeOf({ primaryBaseUrl: 'https://x/v1', model: 'm' }), S.CONNECTION_MODE.API_KEY);
+eq('an empty config reads as apiKey', S.connectionModeOf({}), S.CONNECTION_MODE.API_KEY);
+eq('a missing config reads as apiKey', S.connectionModeOf(null), S.CONNECTION_MODE.API_KEY);
+eq('an unknown mode falls back to apiKey, not to chatgpt', S.connectionModeOf({ connectionMode: 'something-else' }), S.CONNECTION_MODE.API_KEY);
+eq('the chatgpt mode is recognised', S.connectionModeOf({ connectionMode: 'chatgpt' }), S.CONNECTION_MODE.CHATGPT);
+
+const OLD_CONFIG = { primaryBaseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', configVersion: 3 };
+check('an old, complete config still reports ready after upgrade', S.hasRequiredConfig(OLD_CONFIG));
+eq('and it still asks for the API-key fields', S.missingAiFields(OLD_CONFIG).length, 0);
+
+// The subscription path needs a model and nothing else: there is no key to
+// paste and no base URL to know.
+const CG_CONFIG = { connectionMode: 'chatgpt', chatgptModel: 'gpt-6.1-sol' };
+check('a subscription config with a model is complete', S.hasRequiredConfig(CG_CONFIG));
+eq('and needs only the model', S.missingAiFields({ connectionMode: 'chatgpt' }).join(','), 'chatgptModel');
+check('the subscription path never demands an API key', !S.missingAiFields(CG_CONFIG).includes('apiKey'));
+check('nor a base URL', !S.missingAiFields(CG_CONFIG).includes('primaryBaseUrl'));
+check(
+  'a subscription config with no model is refused',
+  !S.hasRequiredConfig({ connectionMode: 'chatgpt', primaryBaseUrl: 'https://x/v1', apiKey: 'k', model: 'm' }),
+);
+check(
+  'and an API-key config with no key is refused even with a model set',
+  !S.hasRequiredConfig({ connectionMode: 'apiKey', primaryBaseUrl: 'https://x/v1', model: 'm' }),
+);
+
+// Switching method must be a two-way door. The panel is sent both methods'
+// values on every read, so this is a property of what the worker hands over.
+check(
+  'the panel receives both methods’ fields at once',
+  ['connectionMode', 'chatgptModel', 'helperUrl', 'primaryBaseUrl', 'model'].every((k) =>
+    new RegExp(`^\\s*${k}:`, 'm').test(aiClientSrc),
+  ),
+);
+check(
+  'the panel form sends both methods’ values back',
+  /function readConfigForm[\s\S]*?connectionMode: modeChoice[\s\S]*?model: el\.cfgModel\.value[\s\S]*?chatgptModel: el\.cfgCgModel\.value[\s\S]*?helperUrl: el\.cfgHelperUrl\.value/.test(panelSrc),
+);
+check('the panel sends the subscription model from the welcome form too', /chatgptModel: el\.suCgModel\.value/.test(panelSrc));
+
+// Defaults. The new fields are additive, which is why the config version is
+// deliberately NOT bumped: an existing install must not be rewritten.
+eq('the default method is the API key', S.DEFAULT_AI_CONFIG.connectionMode, S.CONNECTION_MODE.API_KEY);
+eq('the default subscription model is empty, not invented', S.DEFAULT_AI_CONFIG.chatgptModel, '');
+eq('the default helper address is loopback', S.DEFAULT_AI_CONFIG.helperUrl, S.CHATGPT_HELPER_DEFAULT_URL);
+eq('the config version did not move for an additive change', S.CONFIG_VERSION, 3);
+for (const key of ['connectionMode', 'chatgptModel', 'helperUrl']) {
+  check(`${key} is a declared string field`, S.AI_CONFIG_STRING_KEYS.includes(key));
+}
+check(
+  'both methods are described for the panel to render',
+  !!(S.CONNECTION_MODE_SPECS.chatgpt && S.CONNECTION_MODE_SPECS.apiKey),
+);
+
+// The loopback address. `localhost` is explicitly not an accepted redirect for
+// this flow, so a helper configured on `localhost` would fail the callback at
+// the last step with an error nobody could act on.
+check('the helper default is 127.0.0.1, never localhost', /^http:\/\/127\.0\.0\.1:\d+$/.test(S.CHATGPT_HELPER_DEFAULT_URL));
+check('and nothing in the helper path uses localhost', !/localhost/.test(S.CHATGPT_HELPER_DEFAULT_URL));
+eq('a blank helper address falls back to the loopback default', S.helperBaseUrl({}), S.CHATGPT_HELPER_DEFAULT_URL);
+eq('a trailing slash is stripped', S.helperBaseUrl({ helperUrl: 'http://127.0.0.1:9999/' }), 'http://127.0.0.1:9999');
+eq('the start command is a copy-pasteable line', S.helperStartCommand({}), 'node helper/siwc-helper.js');
+eq('and it carries a non-default port', S.helperStartCommand({ helperUrl: 'http://127.0.0.1:9999' }), 'node helper/siwc-helper.js --port 9999');
+eq('the default port is not spelled out', S.helperStartCommand({ helperUrl: 'http://127.0.0.1:8788' }), 'node helper/siwc-helper.js');
+
+// Scopes. The plan half of this list is what makes the subscription usable at
+// all, and it cannot be read out of the OIDC discovery document — that document
+// lists only the four identity scopes.
+for (const scope of ['openid', 'profile', 'email', 'offline_access', 'resource.invoke', 'chatgpt.tokens.use.direct']) {
+  check(`the scope set asks for ${scope}`, S.CHATGPT_SCOPES.split(' ').includes(scope));
+}
+check('the plan scope is one the request actually asks for', S.CHATGPT_SCOPES.split(' ').includes(S.CHATGPT_PLAN_SCOPE));
+eq('the resource is the OpenAI API host', S.CHATGPT_RESOURCE, 'https://api.openai.com/v1');
+check(
+  'asking for no scope we do not need',
+  S.CHATGPT_SCOPES.split(' ').length === 6,
+  `got ${S.CHATGPT_SCOPES.split(' ').length}: ${S.CHATGPT_SCOPES}`,
+);
+
+// Error codes: each of the seven states needs its own sentence in the panel, so
+// each needs its own code. A collision would silently collapse two different
+// problems into one message.
+const CG_CODES = ['HELPER_UNREACHABLE', 'CHATGPT_NOT_SIGNED_IN', 'CHATGPT_NO_PLAN_SCOPE', 'CHATGPT_NOT_ELIGIBLE', 'CHATGPT_USAGE_LIMIT', 'CHATGPT_UNAVAILABLE', 'CHATGPT_FAILED'];
+const codeValues = CG_CODES.map((k) => S.ERR[k]);
+check('every connection state has an error code', codeValues.every((v) => typeof v === 'string' && v));
+eq('and no two of them are the same code', new Set(codeValues).size, CG_CODES.length);
+check('the panel maps every one of them to real text', CG_CODES.every((k) => panelSrc.includes(`ERR.${k}]`)));
+
+// The end-to-end security claim: no credential ever enters the extension.
+// This is worth asserting rather than trusting, because it is the single
+// property the whole architecture exists to provide.
+const credentialWords = /access_token|refresh_token|id_token|client_secret|code_verifier/i;
+check('the panel never handles a token', !credentialWords.test(panelSrc));
+check('the worker’s helper client never handles a token', !credentialWords.test(fs.readFileSync(path.join(ROOT, 'src/ai/chatgpt-client.js'), 'utf8')));
+check('nor does the shared config layer', !credentialWords.test(fs.readFileSync(path.join(ROOT, 'src/shared/constants.js'), 'utf8')));
+check(
+  'the worker holds no token field either',
+  !credentialWords.test(workerSrcRaw),
+);
+
+// The rejected route. An extension-side OAuth popup is the obvious
+// implementation and it cannot work: the documented callback is an HTTP
+// listener on 127.0.0.1, and launchWebAuthFlow only intercepts chromiumapp.org.
+// Comments explaining that are fine; a call would not be.
+check('the panel does not pretend to run the OAuth flow itself', !/\.launchWebAuthFlow\s*\(/.test(panelSrc));
+check('nor does anything else in src', !/\.launchWebAuthFlow\s*\(/.test(fs.readFileSync(path.join(ROOT, 'src/ai/chatgpt-client.js'), 'utf8')));
+
+const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
+check('the extension asks for no identity permission it cannot use', !(manifest.permissions || []).includes('identity'));
+check('loopback is optional, requested only when the method is chosen', (manifest.optional_host_permissions || []).includes('http://127.0.0.1/*'));
+check('and no loopback host permission is granted up front', !(manifest.host_permissions || []).some((h) => /127\.0\.0\.1|localhost/.test(h)));
 
 // ---------------------------------------------------------------------------
 

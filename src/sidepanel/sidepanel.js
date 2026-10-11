@@ -23,7 +23,9 @@
 
 /* global MSG, ERR, PHONE_STATUS, STORAGE_KEYS, DRAFT_LIMITS, INSTRUCTION_LIMITS,
    REPLY_LENGTH_SPECS, THINKING_SPECS, CONTEXT_MESSAGE_CHOICES, AI_FIELD_LABELS,
-   describeTextLength, formatPhoneDisplay, phoneFromDisplayName, log, logError */
+   CONNECTION_MODE, CONNECTION_MODE_SPECS, CHATGPT_HELPER_DEFAULT_URL,
+   describeTextLength, formatPhoneDisplay, phoneFromDisplayName, helperBaseUrl,
+   helperStartCommand, log, logError */
 
 const $ = (id) => document.getElementById(id);
 
@@ -35,7 +37,23 @@ const el = {
   paneBasic: $('pane-basic'),
   paneAdvanced: $('pane-advanced'),
 
+  btnConn: $('btn-conn'),
+  connLabel: $('conn-label'),
+
   setup: $('setup'),
+  suModes: $('su-modes'),
+  suModeHint: $('su-mode-hint'),
+  suChatgpt: $('su-chatgpt'),
+  suApiKeyPane: $('su-apikey'),
+  suCgStatus: $('su-cg-status'),
+  suCgSignIn: $('su-cg-signin'),
+  suCgSignOut: $('su-cg-signout'),
+  suCgModel: $('su-cg-model'),
+  suCgModelHint: $('su-cg-model-hint'),
+  suCgRefresh: $('su-cg-refresh'),
+  suCgSave: $('su-cg-save'),
+  suCgResult: $('su-cg-result'),
+  suCgCmd: $('su-cg-cmd'),
   suBaseUrl: $('su-baseUrl'),
   suApiKey: $('su-apiKey'),
   suModel: $('su-model'),
@@ -53,6 +71,21 @@ const el = {
   cfgContextMessages: $('cfg-contextMessages'),
   cfgThinking: $('cfg-thinking'),
   thinkingHint: $('thinking-hint'),
+
+  cfgModes: $('cfg-modes'),
+  cfgModeHint: $('cfg-mode-hint'),
+  cfgChatgpt: $('cfg-chatgpt'),
+  cfgApiKeyPane: $('cfg-apikey'),
+  cfgCgStatus: $('cfg-cg-status'),
+  cfgCgSignIn: $('cfg-cg-signin'),
+  cfgCgSignOut: $('cfg-cg-signout'),
+  cfgCgModel: $('cfg-cg-model'),
+  cfgCgModelHint: $('cfg-cg-model-hint'),
+  cfgCgRefresh: $('cfg-cg-refresh'),
+  cfgCgTest: $('cfg-cg-test'),
+  cfgCgCmd: $('cfg-cg-cmd'),
+  cfgHelperUrl: $('cfg-helperUrl'),
+  cgTestResult: $('cg-test-result'),
 
   cfgPrimaryBaseUrl: $('cfg-primaryBaseUrl'),
   cfgFallbackBaseUrl: $('cfg-fallbackBaseUrl'),
@@ -159,6 +192,41 @@ let insTimer = null;
 
 /** In-memory mirror of the draft store. */
 let drafts = null;
+
+/**
+ * Which of the two connection methods the form is currently showing.
+ *
+ * Separate from `cfg.connectionMode` on purpose. The segmented control is a form
+ * field like any other: clicking it decides what gets saved, not what is saved.
+ * Reading the mode off `cfg` here would make the panes jump back the next time
+ * anything re-rendered the form.
+ */
+let modeChoice = CONNECTION_MODE.API_KEY;
+
+/**
+ * The last `/auth/status` payload from the worker, or null before the first read.
+ *
+ * Null is a real state — "we have not asked yet" is not "signed out" — and the
+ * panel says "Checking…" rather than guessing.
+ *
+ * @type {{helper: string, signedIn: boolean, planScope: boolean, email: string,
+ *         label: string, expiresInSec: number, signIn: string, signInError: string,
+ *         startCommand: string, helperUrl: string, error: string}|null}
+ */
+let chatgptStatus = null;
+
+/**
+ * The models this ChatGPT account reported, as last fetched.
+ *
+ * Never synthesised locally. A model name that did not come from the account's
+ * own catalogue is a request that will fail later with a less useful message.
+ *
+ * @type {Array<{slug: string, displayName: string}>}
+ */
+let chatgptModels = [];
+
+/** Timer that watches for a sign-in completing in the other tab. */
+let signInWatch = null;
 
 // ---------------------------------------------------------------------------
 // Per-chat drafts
@@ -621,14 +689,22 @@ function renderSetupForm(c) {
   el.suModel.value = c.model || '';
   el.suApiKey.value = '';
   el.suApiKey.placeholder = c.hasApiKey ? `${'•'.repeat(20)}${c.keyHint || ''}` : 'the key from your provider';
+  setMode(c.connectionMode, { save: false });
+  renderChatGptPanes({ resetModels: true });
 }
 
 /** Read the welcome form into the same patch shape Settings produces. */
 function readSetupForm() {
   const patch = {
+    connectionMode: modeChoice,
     primaryBaseUrl: el.suBaseUrl.value.trim(),
     fallbackBaseUrl: el.suFallback.value.trim(),
     model: el.suModel.value.trim(),
+    chatgptModel: el.suCgModel.value,
+    // Blank is fine: the worker normalises an empty helper URL back to the
+    // documented loopback default, so the welcome screen never has to render a
+    // field the user cannot see in order to send a sensible value.
+    helperUrl: el.cfgHelperUrl.value.trim(),
   };
   const key = el.suApiKey.value.trim();
   if (key) patch.apiKey = key;
@@ -655,7 +731,13 @@ function setSetupResult(text, kind) {
  */
 function focusSetup() {
   renderOnboarding();
-  el.setup.scrollIntoView({ block: 'start' });
+  const target = modeChoice === CONNECTION_MODE.CHATGPT ? el.suChatgpt : el.suApiKeyPane;
+  target.scrollIntoView({ block: 'start' });
+  if (modeChoice === CONNECTION_MODE.CHATGPT) {
+    if (el.suCgSignIn.classList.contains('hidden')) el.suCgModel.focus();
+    else el.suCgSignIn.focus();
+    return;
+  }
   const order = [el.suBaseUrl, el.suApiKey, el.suModel, el.suFallback];
   const empty = order.find((input) => !input.value.trim() && input !== el.suApiKey);
   if (empty) empty.focus();
@@ -678,11 +760,23 @@ async function onSetupSave() {
   setupDirty = false;
   renderConfig(res.config);
   setSetupResult('', '');
+  setCgResult('', 'success');
 
   if (res.config.hasRequiredConfig) {
     await saveOnboarding({ connected: true, dismissed: false });
     el.quickstart.scrollIntoView({ block: 'start' });
-    setStatus('AI provider connected.', 'success');
+    setStatus(
+      modeChoice === CONNECTION_MODE.CHATGPT ? 'ChatGPT plan connected.' : 'AI provider connected.',
+      'success',
+    );
+    return;
+  }
+
+  // Saved, but still not usable. On the ChatGPT path the only thing that can be
+  // missing is the model, and saying so is more use than re-rendering the same
+  // screen silently.
+  if (modeChoice === CONNECTION_MODE.CHATGPT) {
+    setCgResult('Saved. Choose a model above to finish — replies need one.', 'error');
   } else {
     renderOnboarding();
   }
@@ -716,6 +810,582 @@ async function onSetupTest() {
 }
 
 // ---------------------------------------------------------------------------
+// ChatGPT subscription connection
+//
+// The panel's whole job on this path is to be a truthful readout of a process it
+// does not control. Three things follow from that, and they explain most of the
+// code below:
+//
+//   1. The extension never sees a credential. The sign-in token lives in a file
+//      owned by the local helper; everything here is an HTTP call to a loopback
+//      address, and the panel has no field that could hold a token even by
+//      accident. That is the design, not an omission.
+//
+//   2. Sign-in happens in a real browser tab, not in a popup the extension
+//      intercepts. The documented callback for this flow is a listener on
+//      127.0.0.1, which an MV3 extension cannot open — `launchWebAuthFlow` only
+//      intercepts `chromiumapp.org`, which is not an accepted redirect. So the
+//      panel opens the authorize URL with chrome.tabs.create and then watches
+//      the helper's status until the other tab finishes.
+//
+//   3. Nothing about the state is inferred. "Not signed in", "helper not
+//      running" and "signed in but without plan permission" are three different
+//      screens because they need three different actions from the user.
+// ---------------------------------------------------------------------------
+
+/** The two panes that show ChatGPT state — first-run and Settings. */
+const CG_PANES = [
+  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, cmd: el.suCgCmd },
+  { status: el.cfgCgStatus, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, cmd: el.cfgCgCmd },
+];
+
+/** How often the panel re-reads the helper's status while a sign-in is open. */
+const SIGN_IN_POLL_MS = 2000;
+
+/** Give up watching after this long; the user can always press the button again. */
+const SIGN_IN_WATCH_MS = 3 * 60 * 1000;
+
+/** The connection method that is actually saved — not the one the form shows. */
+function activeMode() {
+  return cfg && cfg.connectionMode === CONNECTION_MODE.CHATGPT ? CONNECTION_MODE.CHATGPT : CONNECTION_MODE.API_KEY;
+}
+
+/**
+ * Show one method and hide the other, in both places the choice is offered.
+ *
+ * Does not save anything. The segmented control is a form field: it decides what
+ * Save will write, not what is stored, so switching back and forth to compare the
+ * two panes costs nothing and loses nothing.
+ *
+ * @param {string} mode one of CONNECTION_MODE
+ * @param {{save?: boolean}} [opts] save=true is for the Settings pane, where
+ *   changing the method IS the edit and there is no Save button to press.
+ */
+function setMode(mode, { save = false } = {}) {
+  modeChoice = mode === CONNECTION_MODE.CHATGPT ? CONNECTION_MODE.CHATGPT : CONNECTION_MODE.API_KEY;
+  const isCg = modeChoice === CONNECTION_MODE.CHATGPT;
+
+  for (const seg of [el.suModes, el.cfgModes]) {
+    if (!seg) continue;
+    for (const btn of seg.querySelectorAll('.seg-btn')) {
+      btn.classList.toggle('is-on', btn.dataset.mode === modeChoice);
+    }
+  }
+
+  el.suChatgpt.classList.toggle('hidden', !isCg);
+  el.suApiKeyPane.classList.toggle('hidden', isCg);
+  el.cfgChatgpt.classList.toggle('hidden', !isCg);
+  el.cfgApiKeyPane.classList.toggle('hidden', isCg);
+
+  const spec = CONNECTION_MODE_SPECS[modeChoice];
+  el.suModeHint.textContent = spec ? spec.hint : '';
+  el.cfgModeHint.textContent = spec ? spec.hint : '';
+
+  renderConnectionPill();
+
+  if (isCg) {
+    // The state this pane renders is not in the extension, so it has to be asked
+    // for. Quiet: a failed status read is a state the pane draws, not an error
+    // to announce.
+    refreshChatGptStatus({ quiet: true }).catch(() => {});
+    if (save && modeChoice !== activeMode()) persistMode();
+  }
+}
+
+/** Save just the method, for the Settings pane where the choice is the edit. */
+async function persistMode() {
+  const res = await callWorker({
+    type: MSG.SET_AI_CONFIG,
+    patch: { connectionMode: modeChoice, chatgptModel: el.cfgCgModel.value, helperUrl: el.cfgHelperUrl.value.trim() },
+  });
+  if (!res.ok) {
+    setStatus(describeError(res.code, res.message, res), 'error');
+    return;
+  }
+  renderConfig(res.config);
+  setStatus(
+    modeChoice === CONNECTION_MODE.CHATGPT
+      ? 'Replies will use your ChatGPT plan.'
+      : 'Replies will use your API key.',
+    'success',
+  );
+}
+
+/**
+ * The header pill: which AI is answering, and whether it can.
+ *
+ * Reads the *saved* mode, never the form's. A pill that changed colour because
+ * an unsaved segmented control moved would be reporting a connection that does
+ * not exist yet.
+ */
+function renderConnectionPill() {
+  const pill = el.btnConn;
+  const label = el.connLabel;
+  pill.className = 'conn-pill';
+
+  if (!cfg) {
+    label.textContent = 'Not set up';
+    pill.title = 'AI connection';
+    return;
+  }
+
+  if (activeMode() === CONNECTION_MODE.CHATGPT) {
+    const model = shortModelName(cfg.chatgptModel);
+    if (!chatgptStatus) {
+      label.textContent = 'Checking…';
+      pill.classList.add('is-busy');
+      pill.title = 'Asking the local helper for its status.';
+      return;
+    }
+    if (chatgptStatus.helper !== 'running') {
+      label.textContent = 'Helper off';
+      pill.classList.add('is-warn');
+      pill.title = 'The local helper is not running, so your ChatGPT plan cannot be reached.';
+      return;
+    }
+    if (!chatgptStatus.signedIn) {
+      label.textContent = chatgptStatus.signIn === 'error' ? 'Sign-in failed' : 'Sign in';
+      pill.classList.add('is-warn');
+      pill.title = 'No ChatGPT account is connected yet.';
+      return;
+    }
+    if (!chatgptStatus.planScope) {
+      label.textContent = 'No plan access';
+      pill.classList.add('is-warn');
+      pill.title = 'Signed in, but this sign-in did not include permission to use the ChatGPT plan.';
+      return;
+    }
+    if (!String(cfg.chatgptModel || '').trim()) {
+      label.textContent = 'Pick a model';
+      pill.classList.add('is-warn');
+      pill.title = 'Signed in. Choose which model to use in AI settings.';
+      return;
+    }
+    label.textContent = model || 'ChatGPT';
+    pill.classList.add('is-ok');
+    pill.title = `Using your ChatGPT plan with ${cfg.chatgptModel}.`;
+    return;
+  }
+
+  if (!cfg.hasRequiredConfig) {
+    label.textContent = 'Not set up';
+    pill.classList.add('is-warn');
+    pill.title = 'Add your AI provider details to start generating replies.';
+    return;
+  }
+  label.textContent = shortModelName(cfg.model) || 'API key';
+  pill.classList.add('is-ok');
+  pill.title = `Using your API key with ${cfg.model}.`;
+}
+
+/**
+ * Trim a model name down to something that fits in the pill.
+ *
+ * Only for display — every request uses the full stored value. A model name is
+ * often namespaced (`vendor/model-name`), and the part after the slash is the
+ * part that identifies it.
+ * @param {string} name
+ * @returns {string}
+ */
+function shortModelName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return '';
+  const tail = raw.includes('/') ? raw.slice(raw.lastIndexOf('/') + 1) : raw;
+  return tail.length > 16 ? `${tail.slice(0, 15)}…` : tail;
+}
+
+/**
+ * Read the helper's status and redraw everything that depends on it.
+ *
+ * Never throws and never reports an error on its own: the status box IS the
+ * error report on this path, and it can say something more useful than a toast.
+ *
+ * @param {{quiet?: boolean}} [opts]
+ * @returns {Promise<object|null>}
+ */
+async function refreshChatGptStatus({ quiet = false } = {}) {
+  const res = await callWorker({ type: MSG.CHATGPT_STATUS });
+  if (!res.ok || !res.status) {
+    // The worker itself could not answer — the extension is in a worse state
+    // than the helper being down, so say the same thing the button would.
+    chatgptStatus = {
+      helper: 'unreachable',
+      signedIn: false,
+      planScope: false,
+      signIn: 'none',
+      signInError: '',
+      startCommand: helperStartCommand(cfg || {}),
+      helperUrl: helperBaseUrl(cfg || {}),
+      error: (res && res.code) || ERR.CHATGPT_FAILED,
+    };
+    if (!quiet) logError('chatgpt status failed', res && res.code);
+  } else {
+    chatgptStatus = res.status;
+  }
+  renderChatGptPanes();
+  renderConnectionPill();
+  return chatgptStatus;
+}
+
+/** Redraw both ChatGPT panes from `chatgptStatus` and `chatgptModels`. */
+function renderChatGptPanes({ resetModels = false } = {}) {
+  const s = chatgptStatus;
+  const connected = !!(s && s.helper === 'running' && s.signedIn && s.planScope);
+  const busy = !!(s && (s.signIn === 'pending' || (s.helper === 'running' && s.signedIn && !s.planScope)));
+  const command = (s && s.startCommand) || helperStartCommand(cfg || {});
+
+  for (const pane of CG_PANES) {
+    if (!pane.status) continue;
+
+    const view = describeChatGptStatus(s);
+    pane.status.textContent = view.text;
+    pane.status.className = `conn-status${view.kind ? ` ${view.kind}` : ''}`;
+
+    // The sign-in button is offered whenever the helper is reachable and there
+    // is no usable account. A stale or wrongly-scoped credential is exactly the
+    // case where signing in again is the fix, so it must not be hidden then.
+    const canSignIn = !!s && s.helper === 'running' && !connected;
+    pane.signIn.classList.toggle('hidden', !canSignIn);
+    pane.signIn.classList.toggle('busy', busy);
+    pane.signIn.disabled = busy;
+    pane.signOut.classList.toggle('hidden', !(s && s.signedIn));
+
+    if (pane.cmd) pane.cmd.textContent = command;
+
+    fillModelSelect(pane.model, resetModels ? (cfg && cfg.chatgptModel) || '' : '', { reset: resetModels });
+    if (pane.modelHint) pane.modelHint.textContent = modelHintText(s);
+  }
+}
+
+/**
+ * One sentence for the status box.
+ *
+ * @param {object|null} s
+ * @returns {{text: string, kind: string}} kind is '' | 'is-ok' | 'is-warn' | 'is-bad'
+ */
+function describeChatGptStatus(s) {
+  if (!s) return { text: 'Checking the local helper…', kind: '' };
+
+  if (s.helper !== 'running') {
+    return {
+      text: 'The local helper is not running, so this extension cannot reach your ChatGPT account. Start it (see below), then this line updates on its own.',
+      kind: 'is-warn',
+    };
+  }
+  if (s.signIn === 'pending') {
+    return { text: 'Waiting for the sign-in tab to finish. Complete the sign-in there — this line updates on its own.', kind: 'is-warn' };
+  }
+  if (s.signIn === 'error') {
+    return { text: `The last sign-in did not finish. ${s.signInError || 'Try again.'}`, kind: 'is-bad' };
+  }
+  if (!s.signedIn) {
+    return { text: 'The helper is running, but no ChatGPT account is connected to it yet.', kind: 'is-warn' };
+  }
+  if (!s.planScope) {
+    return {
+      text: 'Signed in, but this sign-in did not include permission to use your ChatGPT plan. Sign out, sign in again, and accept the plan permissions when asked.',
+      kind: 'is-bad',
+    };
+  }
+  const who = s.label || s.email;
+  return { text: `Connected${who ? ` as ${who}` : ''}. The helper renews this in the background while it runs.`, kind: 'is-ok' };
+}
+
+/**
+ * Text under the model picker.
+ *
+ * @param {object|null} s
+ * @returns {string}
+ */
+function modelHintText(s) {
+  if (!s || s.helper !== 'running') return 'Connect to the local helper to see the models your account can use.';
+  if (!s.signedIn) return 'Sign in to list the models your account can use.';
+  if (!s.planScope) return 'Plan access was not granted, so no models can be listed.';
+  if (!chatgptModels.length) return 'No models loaded yet. Press Refresh models.';
+  return `${chatgptModels.length} model${chatgptModels.length === 1 ? '' : 's'} available to this account.`;
+}
+
+/**
+ * Fill a model dropdown from the account's own catalogue.
+ *
+ * The saved model is kept as an option even when it is not in the list. Dropping
+ * it would silently rewrite the user's choice; keeping it means Test Connection
+ * can say "this one is not available to your account", which is the useful
+ * sentence. The list is never invented — a name that did not come from the
+ * account is a request that fails later with a worse message.
+ *
+ * @param {HTMLSelectElement} select
+ * @param {string} prefer model to select, used when resetting the form
+ * @param {{reset?: boolean}} [opts] reset=true ignores whatever is in the DOM
+ */
+function fillModelSelect(select, prefer, { reset = false } = {}) {
+  if (!select) return;
+
+  // While the user is mid-edit, the DOM is the truth: a background status poll
+  // must not undo a choice that has not been saved yet.
+  const keep = reset ? String(prefer || '') : select.value || String(prefer || '');
+
+  const options = chatgptModels.slice();
+  if (keep && !options.some((m) => m.slug === keep)) {
+    options.unshift({ slug: keep, displayName: '', saved: true });
+  }
+
+  select.innerHTML = '';
+  if (!options.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'No models loaded';
+    select.appendChild(opt);
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+  for (const m of options) {
+    const opt = document.createElement('option');
+    opt.value = m.slug;
+    opt.textContent = m.saved
+      ? `${m.slug} (saved)`
+      : m.displayName && m.displayName !== m.slug
+        ? `${m.displayName} — ${m.slug}`
+        : m.slug;
+    select.appendChild(opt);
+  }
+  select.value = options.some((m) => m.slug === keep) ? keep : options[0].slug;
+}
+
+/** The result line of whichever ChatGPT pane is on screen. */
+function cgResultEl() {
+  return el.setup.classList.contains('hidden') ? el.cgTestResult : el.suCgResult;
+}
+
+/**
+ * @param {string} text
+ * @param {'success'|'error'} kind
+ */
+function setCgResult(text, kind) {
+  const target = cgResultEl();
+  if (!text) {
+    target.classList.add('hidden');
+    target.textContent = '';
+    return;
+  }
+  target.textContent = text;
+  target.className = `test-result ${kind}`;
+  target.classList.remove('hidden');
+}
+
+/**
+ * Make sure the extension may talk to the local helper.
+ *
+ * `http://127.0.0.1/*` is an optional host permission, requested here rather
+ * than at install: an extension that asks for a loopback permission up front,
+ * before the user has chosen the method that needs it, is asking for something
+ * it has no use for yet. Returns false rather than throwing, because "Chrome
+ * said no" is a state the pane has to explain.
+ *
+ * @returns {Promise<boolean>}
+ */
+async function ensureLoopbackPermission() {
+  const origins = ['http://127.0.0.1/*'];
+  try {
+    if (await chrome.permissions.contains({ origins })) return true;
+    return await chrome.permissions.request({ origins });
+  } catch (err) {
+    logError('loopback permission request failed', err && err.message);
+    return false;
+  }
+}
+
+/**
+ * Continue with ChatGPT.
+ *
+ * The order matters: permission first (the click is still the user gesture),
+ * then the helper's authorize URL, then a real tab. The panel does not touch the
+ * resulting credential — it cannot, it is not there.
+ *
+ * @param {HTMLButtonElement} btn
+ */
+async function onChatGptSignIn(btn) {
+  await run(btn, 'chatgpt-signin', async () => {
+    setCgResult('Starting sign-in…', 'success');
+
+    const granted = await ensureLoopbackPermission();
+    if (!granted) {
+      setCgResult(
+        'Chrome did not grant access to 127.0.0.1, and without it the extension cannot reach the local helper. Allow access when Chrome asks, or use your own API key instead.',
+        'error',
+      );
+      return;
+    }
+
+    const res = await callWorker({ type: MSG.CHATGPT_SIGN_IN });
+    if (!res.ok) {
+      setCgResult(describeError(res.code, res.message, res), 'error');
+      await refreshChatGptStatus({ quiet: true });
+      return;
+    }
+
+    await chrome.tabs.create({ url: res.authorizeUrl });
+    setCgResult(
+      'A sign-in tab has opened. Finish signing in there — this panel notices on its own, and you can close the tab afterwards.',
+      'success',
+    );
+    await refreshChatGptStatus({ quiet: true });
+    watchSignIn();
+  });
+}
+
+/** Stop watching for a sign-in to complete. */
+function stopSignInWatch() {
+  if (signInWatch) {
+    clearInterval(signInWatch);
+    signInWatch = null;
+  }
+}
+
+/**
+ * Watch the helper's status until the tab that opened finishes its job.
+ *
+ * Polling, not events: the thing that completes the sign-in is a different tab
+ * talking to a different process, and the only channel back is the helper's own
+ * status endpoint.
+ */
+function watchSignIn() {
+  stopSignInWatch();
+  const startedAt = Date.now();
+
+  signInWatch = setInterval(async () => {
+    if (Date.now() - startedAt > SIGN_IN_WATCH_MS) {
+      stopSignInWatch();
+      return;
+    }
+    const status = await refreshChatGptStatus({ quiet: true });
+    if (!status) return;
+
+    if (status.signedIn && status.planScope) {
+      stopSignInWatch();
+      setCgResult('Signed in. Loading the models your account can use…', 'success');
+      const models = await refreshChatGptModels({ quiet: true });
+      setCgResult(
+        models.length
+          ? 'Connected. Pick the model you want, then Save.'
+          : 'Connected, but this account reported no models for this app. You can still try your own API key instead.',
+        models.length ? 'success' : 'error',
+      );
+      return;
+    }
+    if (status.signedIn && !status.planScope) {
+      stopSignInWatch();
+      setCgResult(
+        'Signed in, but the plan permission was not granted, so replies cannot use your ChatGPT plan. Sign out and try again, accepting the plan permissions.',
+        'error',
+      );
+      return;
+    }
+    if (status.signIn === 'error') {
+      stopSignInWatch();
+      setCgResult(status.signInError || 'The sign-in did not finish.', 'error');
+    }
+  }, SIGN_IN_POLL_MS);
+}
+
+/**
+ * Sign out, and revoke the credential at OpenAI.
+ *
+ * Says plainly whether OpenAI confirmed the revocation, because "signed out
+ * here" and "the credential is dead everywhere" are different claims and only
+ * one of them is ours to make.
+ */
+async function onChatGptSignOut(btn) {
+  await run(btn, 'chatgpt-signout', async () => {
+    const res = await callWorker({ type: MSG.CHATGPT_SIGN_OUT });
+    if (!res.ok) {
+      setCgResult(describeError(res.code, res.message, res), 'error');
+      return;
+    }
+    stopSignInWatch();
+    chatgptModels = [];
+    chatgptStatus = res.status || null;
+    renderChatGptPanes({ resetModels: true });
+    renderConnectionPill();
+    setCgResult(
+      res.revoked
+        ? 'Signed out, and the credential was revoked at OpenAI.'
+        : 'Signed out on this computer. OpenAI did not confirm the revocation — the credential expires on its own.',
+      'success',
+    );
+  });
+}
+
+/**
+ * Refresh the account's model list.
+ *
+ * @param {{quiet?: boolean}} [opts] quiet=true only updates the dropdown
+ * @returns {Promise<Array<object>>}
+ */
+async function refreshChatGptModels({ quiet = false } = {}) {
+  const res = await callWorker({ type: MSG.CHATGPT_MODELS });
+  if (!res.ok) {
+    if (!quiet) setCgResult(describeError(res.code, res.message, res), 'error');
+    return [];
+  }
+  chatgptModels = res.models || [];
+  renderChatGptPanes();
+  if (!quiet) {
+    setCgResult(
+      chatgptModels.length
+        ? `${chatgptModels.length} model${chatgptModels.length === 1 ? '' : 's'} available to this account.`
+        : 'This account reported no models available to this app.',
+      chatgptModels.length ? 'success' : 'error',
+    );
+  }
+  return chatgptModels;
+}
+
+/** @param {HTMLButtonElement} btn */
+async function onChatGptRefreshModels(btn) {
+  await run(btn, 'chatgpt-models', async () => {
+    const models = await refreshChatGptModels();
+    if (!models.length && chatgptStatus && chatgptStatus.helper === 'running' && chatgptStatus.signedIn) {
+      // The empty list above is already on screen; this only makes sure the
+      // status line is not still claiming everything is fine.
+      await refreshChatGptStatus({ quiet: true });
+    }
+  });
+}
+
+/**
+ * Send one real request, and say so before it happens.
+ *
+ * Separate from Test Connection on purpose. This spends part of the account's
+ * allowance, so it is an action the user takes knowingly rather than something
+ * that happens behind a button labelled "Test".
+ *
+ * @param {HTMLButtonElement} btn
+ */
+async function onChatGptTestRequest(btn) {
+  await run(btn, 'chatgpt-test-request', async () => {
+    setCgResult('Sending one short request to your ChatGPT plan…', 'success');
+    const res = await callWorker({
+      type: MSG.CHATGPT_TEST_REQUEST,
+      override: readConfigForm(),
+    });
+
+    if (!res.ok) {
+      setCgResult(res.error || 'The request failed.', 'error');
+      setStatus('ChatGPT request failed.', 'error');
+      return;
+    }
+    setCgResult(
+      `Real request succeeded.\nModel: ${res.model}\nResponse time: ${res.responseMs} ms\nIt replied: “${res.sample}…”`,
+      'success',
+    );
+    setStatus('ChatGPT request succeeded.', 'success');
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Settings form
 // ---------------------------------------------------------------------------
 
@@ -741,11 +1411,18 @@ function renderConfig(c) {
   el.cfgApiKey.value = '';
   el.cfgApiKey.placeholder = c.hasApiKey ? `${'•'.repeat(20)}${c.keyHint || ''}` : 'your provider’s API key';
 
+  el.cfgHelperUrl.value = c.helperUrl || CHATGPT_HELPER_DEFAULT_URL;
+
   el.cfgContextMessages.value = String(c.contextMessages);
   el.cfgThinking.value = c.thinking;
   updateThinkingHint();
 
   setLengthControl(c.replyLength);
+  // The mode the form shows comes from storage on every re-render, exactly like
+  // every other field. Both methods' values are sent to this page at once, so
+  // switching the control back and forth never blanks the other one.
+  setMode(c.connectionMode, { save: false });
+  renderChatGptPanes({ resetModels: true });
   renderOnboarding();
 }
 
@@ -780,6 +1457,7 @@ function setTestResult(text, kind) {
 /** Read the Settings form into a patch object. */
 function readConfigForm() {
   const patch = {
+    connectionMode: modeChoice,
     systemPrompt: el.cfgSystemPrompt.value,
     primaryBaseUrl: el.cfgPrimaryBaseUrl.value.trim(),
     fallbackBaseUrl: el.cfgFallbackBaseUrl.value.trim(),
@@ -789,6 +1467,8 @@ function readConfigForm() {
     maxChars: Number(el.cfgMaxChars.value),
     contextMessages: Number(el.cfgContextMessages.value),
     thinking: el.cfgThinking.value,
+    chatgptModel: el.cfgCgModel.value,
+    helperUrl: el.cfgHelperUrl.value.trim(),
   };
   const key = el.cfgApiKey.value.trim();
   // Only send the key when the user actually typed one; otherwise let the worker
@@ -891,6 +1571,32 @@ function describeError(code, fallback, res) {
     [ERR.CHAT_CHANGED]:
       'You switched to a different conversation while the reply was being written, so it was not sent. Generate again for this customer.',
     [ERR.BUSY]: 'Another action is still running. Please wait a moment.',
+
+    // --- ChatGPT subscription path -----------------------------------------
+    //
+    // These four states are not failures of the extension and not failures of
+    // the user's ChatGPT account: they are the local helper being off, nobody
+    // being signed in, plan permission not having been granted, and the account
+    // being out of allowance. Each one needs a different action, so each one
+    // gets its own sentence rather than a shared "connection problem".
+    [ERR.HELPER_UNREACHABLE]:
+      fallback ||
+      `The local helper is not running. Open a terminal in the folder you installed this extension from and run: ${helperStartCommand(cfg || {})}`,
+    [ERR.CHATGPT_NOT_SIGNED_IN]:
+      'No ChatGPT account is connected yet. Click “Continue with ChatGPT” in AI settings to sign in.',
+    [ERR.CHATGPT_NO_PLAN_SCOPE]:
+      'This sign-in does not include permission to use your ChatGPT plan, so replies cannot be written with it. Sign out in AI settings, then sign in again and accept the plan permissions.',
+    [ERR.CHATGPT_NOT_ELIGIBLE]:
+      'This ChatGPT account is not eligible for plan usage in other apps. You can use your own API key instead — switch to it in AI settings.',
+    [ERR.CHATGPT_USAGE_LIMIT]:
+      'Your ChatGPT plan has no allowance left for this right now. It resets on its own; until then you can switch to your own API key in AI settings.',
+    [ERR.CHATGPT_UNAVAILABLE]:
+      'OpenAI reported that ChatGPT plan usage is unavailable at the moment. Try again shortly, or switch to your own API key.',
+    [ERR.CHATGPT_FAILED]:
+      fallback || 'The request to your ChatGPT plan failed. Check the connection in AI settings and try again.',
+    [ERR.HELPER_CONFIG_INVALID]:
+      fallback ||
+      'The local helper is running but could not read OpenAI’s sign-in configuration. Check this computer’s internet connection — nothing is wrong with your ChatGPT account.',
   };
   return map[code] || fallback || `Something went wrong (${code}). Try again.`;
 }
@@ -1100,6 +1806,10 @@ async function onClearKey() {
  *
  * Reports exactly which of network / key / model / endpoint failed — never a
  * generic "something went wrong".
+ *
+ * On the ChatGPT path this is the free check, and the panel says which four
+ * things it verified and that no request was sent. The real request is a
+ * separate button, because this one spends the user's plan allowance.
  */
 async function onTestConnection() {
   await run(el.btnTest, 'test', async () => {
@@ -1108,6 +1818,11 @@ async function onTestConnection() {
       type: MSG.TEST_CONNECTION,
       override: readConfigForm(),
     });
+
+    if (res.mode === CONNECTION_MODE.CHATGPT) {
+      await renderChatGptTestResult(res);
+      return;
+    }
 
     if (!res.ok) {
       const lines = [res.error || 'Request failed.'];
@@ -1127,6 +1842,37 @@ async function onTestConnection() {
     );
     setStatus('Test Connection succeeded.', 'success');
   });
+}
+
+/**
+ * Draw the outcome of the free ChatGPT check.
+ *
+ * Every line here is something the extension actually verified. The last line
+ * states that no request was sent, because the whole point of this button on
+ * this path is that it does not spend anything.
+ *
+ * @param {object} res the worker's response, with `mode: 'chatgpt'`
+ */
+async function renderChatGptTestResult(res) {
+  if (!res.ok) {
+    setTestResult(describeError(res.code, res.error, res), 'error');
+    setStatus('Test Connection failed.', 'error');
+    await refreshChatGptStatus({ quiet: true });
+    return;
+  }
+
+  const lines = [
+    'Connection check passed.',
+    `Account: ${res.account || 'signed in'}`,
+    `Model: ${res.model}`,
+    `Model list: ${res.modelCount} available to this account`,
+    res.helperVersion ? `Helper version: ${res.helperVersion}` : '',
+    'No request was sent to the model, so this cost nothing of your plan.',
+  ].filter(Boolean);
+
+  setTestResult(lines.join('\n'), 'success');
+  setStatus('Test Connection succeeded.', 'success');
+  await refreshChatGptStatus({ quiet: true });
 }
 
 /**
@@ -1167,6 +1913,16 @@ el.btnSettings.addEventListener('click', () => {
   const opening = el.settings.classList.contains('hidden');
   el.settings.classList.toggle('hidden', !opening);
   el.btnSettings.setAttribute('aria-expanded', String(opening));
+});
+
+// The connection pill is a shortcut to the one screen that explains it, and it
+// opens on the tab that holds the answer rather than on Basic.
+el.btnConn.addEventListener('click', () => {
+  el.settings.classList.remove('hidden');
+  el.btnSettings.setAttribute('aria-expanded', 'true');
+  showSettingsTab('advanced');
+  el.cfgModes.scrollIntoView({ block: 'start' });
+  refreshChatGptStatus({ quiet: true }).catch(() => {});
 });
 
 function showSettingsTab(which) {
@@ -1214,6 +1970,41 @@ el.suToggleKey.addEventListener('click', () => {
   if (!showing) el.suApiKey.focus();
 });
 el.qsDone.addEventListener('click', () => saveOnboarding({ dismissed: true }));
+
+// --- ChatGPT subscription ---------------------------------------------------
+//
+// One set of handlers, two panes. The segmented control is the only difference
+// between them: in the welcome screen it edits what Save will write, in Settings
+// the choice IS the edit and is persisted straight away.
+for (const [seg, persist] of [
+  [el.suModes, false],
+  [el.cfgModes, true],
+]) {
+  seg.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('.seg-btn');
+    if (!btn || !btn.dataset.mode) return;
+    if (!persist) setupDirty = true;
+    setCgResult('', 'success');
+    setMode(btn.dataset.mode, { save: persist });
+  });
+}
+
+el.suCgSignIn.addEventListener('click', () => onChatGptSignIn(el.suCgSignIn));
+el.cfgCgSignIn.addEventListener('click', () => onChatGptSignIn(el.cfgCgSignIn));
+el.suCgSignOut.addEventListener('click', () => onChatGptSignOut(el.suCgSignOut));
+el.cfgCgSignOut.addEventListener('click', () => onChatGptSignOut(el.cfgCgSignOut));
+el.suCgRefresh.addEventListener('click', () => onChatGptRefreshModels(el.suCgRefresh));
+el.cfgCgRefresh.addEventListener('click', () => onChatGptRefreshModels(el.cfgCgRefresh));
+el.cfgCgTest.addEventListener('click', () => onChatGptTestRequest(el.cfgCgTest));
+el.suCgSave.addEventListener('click', () => run(el.suCgSave, 'setup-save', onSetupSave));
+
+// Choosing a model is an edit to the welcome form like any other, so it stops
+// the form tracking storage until it is saved.
+el.suCgModel.addEventListener('change', () => {
+  setupDirty = true;
+  setCgResult('', 'success');
+});
+el.cfgCgModel.addEventListener('change', () => setTestResult('', 'success'));
 
 // Once the user types, the form stops tracking storage until it is saved.
 for (const input of [el.suBaseUrl, el.suApiKey, el.suModel, el.suFallback]) {
@@ -1299,6 +2090,27 @@ el.reply.addEventListener('input', () => {
 });
 
 /**
+ * Keep the connection pill honest while the panel is open.
+ *
+ * The helper is a separate process: it can be stopped, restarted, or have its
+ * sign-in expire, all without anything happening in this panel. On the API-key
+ * path there is nothing to watch — the config is local and static — so this only
+ * runs while the subscription method is the saved one.
+ *
+ * Slow on purpose. Nothing here is time-critical (a reply in flight reports its
+ * own failure), and a loopback call every few seconds would be noise.
+ */
+let helperPollTimer = null;
+function startHelperPolling() {
+  if (helperPollTimer) return;
+  helperPollTimer = setInterval(() => {
+    if (document.hidden || busy) return;
+    if (activeMode() !== CONNECTION_MODE.CHATGPT) return;
+    refreshChatGptStatus({ quiet: true }).catch(() => {});
+  }, 20_000);
+}
+
+/**
  * Follow the user across chats: poll the context while the panel is open so the
  * contact card never shows a stale contact. Read-only, cheap, and passive — it
  * never opens the contact-info drawer, so nothing flashes on screen.
@@ -1339,14 +2151,18 @@ async function init() {
 
   await readChat({ silent: true });
   startPolling();
+  startHelperPolling();
 
   // Refresh immediately when the user switches tabs or comes back to the panel.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !busy) readChat({ silent: true }).catch(() => {});
+    if (document.hidden || busy) return;
+    readChat({ silent: true }).catch(() => {});
+    if (activeMode() === CONNECTION_MODE.CHATGPT) refreshChatGptStatus({ quiet: true }).catch(() => {});
   });
 
   // Flush the pending draft and instruction before the panel goes away.
   window.addEventListener('pagehide', () => {
+    stopSignInWatch();
     saveDraft(currentChatId, el.reply.value, draftState).catch(() => {});
     flushInstruction().catch(() => {});
   });

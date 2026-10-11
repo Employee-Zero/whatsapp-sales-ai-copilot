@@ -153,6 +153,101 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   Connection pill
+
+   Which AI is answering, and whether it is answering at all. It sits in the
+   identity bar rather than behind the gear because it is a statement about the
+   reply on screen, not a preference — but it is styled as a quiet chip, not an
+   alert: a working connection should be readable in peripheral vision and
+   otherwise invisible.
+
+   The dot carries the state, so it is the only element that changes colour.
+   The label is short on purpose; the long version lives in the settings pane
+   this button opens.
+   -------------------------------------------------------------------------- */
+
+.conn-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 118px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.conn-pill:hover {
+  background: #f4f7f6;
+  color: var(--text);
+}
+
+.conn-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted-2);
+}
+
+.conn-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Green: connected and the last thing we asked it worked. */
+.conn-pill.is-ok {
+  border-color: var(--ok-border);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.conn-pill.is-ok .conn-dot {
+  background: var(--ok);
+}
+
+/* Amber: configured, but something needs the user — signed out, helper not
+   running, a model that is not in the account's catalogue. */
+.conn-pill.is-warn {
+  border-color: var(--warn-border);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.conn-pill.is-warn .conn-dot {
+  background: var(--warn);
+}
+
+/* Red is reserved for "this will fail if you press Generate". */
+.conn-pill.is-bad {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.conn-pill.is-bad .conn-dot {
+  background: var(--danger);
+}
+
+.conn-pill.is-busy .conn-dot {
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Body
    -------------------------------------------------------------------------- */
 
@@ -494,6 +589,18 @@ body {
 
 .seg.tabs .seg-btn {
   flex: 1 1 0;
+}
+
+/* The two connection methods. Full width and equal, like the settings tabs —
+   neither is the "real" way to connect, so neither gets the wider half. */
+.seg.modes {
+  display: flex;
+  width: 100%;
+}
+
+.seg.modes .seg-btn {
+  flex: 1 1 0;
+  padding: 0 8px;
 }
 
 /* The length row: control on the left, live word count on the right. */
@@ -972,6 +1079,121 @@ button.quick .txt small {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(14, 138, 107, 0.12);
+}
+
+/* The model picker is a select, and the first screen now has one, so it needs
+   the same skin as the text inputs rather than the platform default. */
+.setup select {
+  height: 34px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.setup select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 138, 107, 0.12);
+}
+
+.setup .pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A sub-heading inside a settings pane — "AI connection", "Reply tuning".
+   There are now two unrelated groups of fields on the Advanced tab, and
+   without a rule between them the second one reads as part of the first. */
+.conn-head {
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.pane > .conn-head:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* The ChatGPT pane's status line. Neutral by default so that the coloured
+   states mean something when they appear. */
+.conn-status {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: #f1f5f4;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.conn-status b {
+  font-weight: 650;
+  color: var(--text);
+}
+
+.conn-status.is-ok {
+  background: var(--ok-soft);
+  border-color: var(--ok-border);
+  color: var(--ok);
+}
+
+.conn-status.is-ok b {
+  color: var(--ok);
+}
+
+.conn-status.is-warn {
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
+
+.conn-status.is-warn b {
+  color: var(--warn);
+}
+
+.conn-status.is-bad {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.conn-status.is-bad b {
+  color: var(--danger);
+}
+
+/* The helper start command: monospace, selectable, and wrapping rather than
+   scrolling — it is meant to be copied into a terminal. */
+.conn-cmd {
+  display: block;
+  margin: 6px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
 }
 
 .setup .row button {

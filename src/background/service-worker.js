@@ -22,8 +22,11 @@ import {
   assertConfigured,
   generateReply,
   testConnection,
+  testChatGPTRequest,
+  helperStatus,
   sendToTab,
 } from './../ai/ai-client.js';
+import { startSignIn, signOut, listModels } from './../ai/chatgpt-client.js';
 
 // ---------------------------------------------------------------------------
 // Busy lock — one in-flight operation at a time, process-wide.
@@ -290,6 +293,68 @@ const ROUTES = {
     try {
       const result = await testConnection(msg.override || null);
       return result;
+    } finally {
+      releaseLock();
+    }
+  },
+
+  /**
+   * ChatGPT mode: state of the local helper, as the panel needs to render it.
+   *
+   * Never fails. "The helper is not running" is a state, not an error, and a
+   * route that threw for it would make the panel show a red banner on every
+   * open for a user who simply has not started the helper yet.
+   */
+  [MSG.CHATGPT_STATUS]: async () => {
+    const cfg = await loadAiConfig();
+    return { ok: true, status: await helperStatus(cfg) };
+  },
+
+  /**
+   * Begin a sign-in and hand the panel the URL to open.
+   *
+   * The worker does not open the tab itself: the panel's click is the user
+   * gesture this act belongs to, and a route that opens windows as a side effect
+   * of being called is a route that can be called by anything.
+   */
+  [MSG.CHATGPT_SIGN_IN]: async () => {
+    acquireLock('chatgpt-signin');
+    try {
+      const cfg = await loadAiConfig();
+      const out = await startSignIn(cfg);
+      return { ok: true, authorizeUrl: out.authorizeUrl, firstRegistration: out.firstRegistration };
+    } finally {
+      releaseLock();
+    }
+  },
+
+  [MSG.CHATGPT_SIGN_OUT]: async () => {
+    acquireLock('chatgpt-signout');
+    try {
+      const cfg = await loadAiConfig();
+      const out = await signOut(cfg);
+      log('ChatGPT sign-out', out.revoked ? 'revoked' : 'local only');
+      return { ok: true, revoked: out.revoked, message: out.message, status: await helperStatus(cfg) };
+    } finally {
+      releaseLock();
+    }
+  },
+
+  [MSG.CHATGPT_MODELS]: async () => {
+    acquireLock('chatgpt-models');
+    try {
+      const cfg = await loadAiConfig();
+      const out = await listModels(cfg);
+      return { ok: true, models: out.models, total: out.total, visibilityReported: out.visibilityReported };
+    } finally {
+      releaseLock();
+    }
+  },
+
+  [MSG.CHATGPT_TEST_REQUEST]: async (msg) => {
+    acquireLock('chatgpt-test');
+    try {
+      return await testChatGPTRequest(msg.override || null);
     } finally {
       releaseLock();
     }
