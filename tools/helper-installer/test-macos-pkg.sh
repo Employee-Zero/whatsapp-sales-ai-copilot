@@ -125,6 +125,22 @@ PROGRAM="$(/usr/bin/plutil -extract ProgramArguments.0 raw -o - "$PLIST" 2>/dev/
 POST="$WORK/expanded/Scripts/postinstall"
 if [ -f "$POST" ]; then
 	ok "postinstall script is present"
+	# Installer.app execs ./postinstall itself. A missing +x or shebang fails the
+	# whole install with PKInstallErrorDomain 112 "postinstall does not exist".
+	[ -x "$POST" ] && ok "postinstall is executable (+x)" || bad "postinstall is NOT executable — Installer.app would fail with error 112"
+	[ "$(/usr/bin/head -c 2 "$POST")" = "#!" ] && ok "postinstall starts with a shebang" || bad "postinstall has no shebang"
+	/usr/bin/grep -q $'\r' "$POST" && bad "postinstall has CRLF line endings" || ok "postinstall has LF line endings"
+	/bin/sh -n "$POST" && ok "postinstall passes sh -n syntax check" || bad "postinstall has a syntax error"
+	# The check that matters is the mode inside the real Scripts archive — what
+	# Installer.app extracts and execs — not the unpacked copy. (A harmless
+	# ._postinstall AppleDouble can appear beside it on macOS 15+: the
+	# com.apple.provenance xattr cannot be stripped by a build script.)
+	mkdir -p "$WORK/xar" && ( cd "$WORK/xar" && /usr/bin/xar -xf "$PKG_PATH" Scripts 2>/dev/null )
+	if /usr/bin/gzip -dc "$WORK/xar/Scripts" 2>/dev/null | /usr/bin/cpio -tv 2>/dev/null | /usr/bin/grep -Eq '^-rwxr-xr-x.* \./postinstall$'; then
+		ok "archived ./postinstall is mode 755"
+	else
+		bad "archived ./postinstall is not mode 755 inside the package"
+	fi
 	if /usr/bin/grep -Eq -- '--print-authorize-url|/auth/start|auth\.openai\.com|/usr/bin/open|open -a' "$POST"; then
 		bad "postinstall appears to start a sign-in or open a browser"
 	else

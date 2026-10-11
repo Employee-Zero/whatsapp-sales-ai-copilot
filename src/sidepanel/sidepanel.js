@@ -805,8 +805,8 @@ async function onSetupTest() {
 
 /** The two panes that show ChatGPT state — first-run and Settings. */
 const CG_PANES = [
-  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, cmd: el.suCgCmd, why: el.suCgWhy },
-  { status: el.cfgCgStatus, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, cmd: el.cfgCgCmd },
+  { status: el.suCgStatus, signIn: el.suCgSignIn, signOut: el.suCgSignOut, model: el.suCgModel, modelHint: el.suCgModelHint, cmd: el.suCgCmd, why: el.suCgWhy, refresh: el.suCgRefresh, save: el.suCgSave },
+  { status: el.cfgCgStatus, signIn: el.cfgCgSignIn, signOut: el.cfgCgSignOut, model: el.cfgCgModel, modelHint: el.cfgCgModelHint, cmd: el.cfgCgCmd, refresh: el.cfgCgRefresh, test: el.cfgCgTest },
 ];
 
 /** How often the panel re-reads the helper's status while a sign-in is open. */
@@ -1014,10 +1014,17 @@ function renderChatGptPanes({ resetModels = false } = {}) {
     // The sign-in button is offered whenever the helper is reachable and there
     // is no usable account. A stale or wrongly-scoped credential is exactly the
     // case where signing in again is the fix, so it must not be hidden then.
+    // The button stays visible until connected, but is only enabled once the
+    // Helper has actually been detected: a clickable button that cannot work
+    // would be a lie.
     const canSignIn = !!s && s.helper === 'running' && !connected;
-    pane.signIn.classList.toggle('hidden', !canSignIn);
+    pane.signIn.classList.toggle('hidden', connected);
     pane.signIn.classList.toggle('busy', busy);
-    pane.signIn.disabled = busy;
+    pane.signIn.disabled = busy || !canSignIn;
+    // Models, refresh, continue and test only make sense after authorisation.
+    for (const key of ['refresh', 'save', 'test']) {
+      if (pane[key]) pane[key].disabled = !connected;
+    }
     pane.signOut.classList.toggle('hidden', !(s && s.signedIn));
 
     if (pane.cmd) pane.cmd.textContent = command;
@@ -1028,6 +1035,7 @@ function renderChatGptPanes({ resetModels = false } = {}) {
     if (pane.why) pane.why.classList.toggle('hidden', connected);
 
     fillModelSelect(pane.model, resetModels ? (cfg && cfg.chatgptModel) || '' : '', { reset: resetModels });
+    if (!connected) pane.model.disabled = true;
     if (pane.modelHint) pane.modelHint.textContent = modelHintText(s);
   }
 }
@@ -1043,7 +1051,7 @@ function describeChatGptStatus(s) {
 
   if (s.helper !== 'running') {
     return {
-      text: 'The local helper is not running, so this extension cannot reach your ChatGPT account. Start it (see below), then this line updates on its own.',
+      text: 'Helper not detected yet. Install it with the steps below — this line updates by itself once it is running.',
       kind: 'is-warn',
     };
   }
@@ -2073,11 +2081,18 @@ el.reply.addEventListener('input', () => {
 let helperPollTimer = null;
 function startHelperPolling() {
   if (helperPollTimer) return;
+  let lastPoll = 0;
   helperPollTimer = setInterval(() => {
     if (document.hidden || busy) return;
-    if (activeMode() !== CONNECTION_MODE.CHATGPT) return;
+    // Also while the first-run form merely shows the ChatGPT pane: the point is
+    // to notice the Helper the moment the installer finishes.
+    if (activeMode() !== CONNECTION_MODE.CHATGPT && modeChoice !== CONNECTION_MODE.CHATGPT) return;
+    // Quick (3s) until the Helper is found, then slow.
+    const found = !!(chatgptStatus && chatgptStatus.helper === 'running');
+    if (found && Date.now() - lastPoll < 20_000) return;
+    lastPoll = Date.now();
     refreshChatGptStatus({ quiet: true }).catch(() => {});
-  }, 20_000);
+  }, 3000);
 }
 
 /**

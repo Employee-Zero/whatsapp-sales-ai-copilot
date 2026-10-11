@@ -56,6 +56,8 @@ function runtimeFiles() {
   // The side panel's own assets are not listed in the manifest; they sit beside
   // its HTML and are referenced by it.
   for (const asset of ['src/sidepanel/sidepanel.js', 'src/sidepanel/sidepanel.css']) named.add(asset);
+  for (const icon of Object.values(manifest.icons || {})) named.add(icon);
+  for (const icon of Object.values((manifest.action && manifest.action.default_icon) || {})) named.add(icon);
 
   return [...named].sort();
 }

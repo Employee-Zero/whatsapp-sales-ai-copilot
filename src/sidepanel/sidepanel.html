@@ -98,12 +98,22 @@
             expandable "Why the Helper?" below stays either way.
           -->
           <div id="su-cg-why" class="why">
-            <p class="why-title">Why is a Mac Helper required?</p>
+            <p class="why-title">Why a small Mac Helper?</p>
             <p class="why-body">
-              Our current ChatGPT sign-in uses OpenAI's local authorization flow,
-              and browser-only sign-in is not available for this extension yet.
-              The Helper runs locally on your Mac to complete the sign-in and
-              store the credential securely. Install it once.
+              OpenAI's sign-in runs securely on your own Mac. The Helper handles
+              it locally and keeps your sign-in private. Install it once — it
+              then runs quietly in the background.
+            </p>
+            <ol class="why-steps">
+              <li>Get the Helper installer (<code>.pkg</code>) for your Mac.</li>
+              <li>Double-click it and follow the installer.</li>
+              <li>Come back here — this panel detects the Helper by itself.</li>
+            </ol>
+            <p class="why-note">
+              Test build: the installer is not on GitHub Releases yet. Use the
+              <code>.pkg</code> file you were given with this extension. When
+              it is published it will be listed on the
+              <a href="https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases" target="_blank" rel="noopener">Releases page</a>.
             </p>
           </div>
 
@@ -125,38 +135,17 @@
           <div id="su-cg-result" class="test-result hidden"></div>
 
           <details class="help">
-            <summary>Why the Helper?</summary>
+            <summary>Advanced (developers)</summary>
             <div class="help-body">
               <p>
-                The Helper is part of this project — not an OpenAI product. It is
-                a small program that runs on this Mac, completes the sign-in
-                through OpenAI's local authorization flow, and keeps the
-                resulting credential in a file that only it can read. Your
-                browser never sees the credential, and neither does this
-                extension.
-              </p>
-              <p>
-                <b>Install it:</b> the macOS installer is not published yet, so
-                there is nothing to download today.
-                <a href="https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases" target="_blank" rel="noopener">View Helper releases</a>
-                — once the installer is there, it installs the Helper and starts
-                it in the background.
-              </p>
-              <p>
-                If you already have the project folder, you can start the Helper
-                yourself with:
+                The Helper is part of this project, not an OpenAI product, and
+                the extension never sees your sign-in. From a source checkout you
+                can run it yourself (needs Node.js 20+):
               </p>
               <p><code id="su-cg-cmd">node helper/siwc-helper.js</code></p>
               <p>
-                That needs Node.js 20 or later. Nothing else has to be installed
-                first — the Helper has no dependencies.
-              </p>
-              <p>
-                Whether your ChatGPT plan can be used this way depends on your
-                account, and signing in opens a normal browser tab at openai.com.
-                If it turns out not to work for you, or you would rather not use
-                it, switch to <b>Your own API key</b> above — that method needs
-                nothing installed and works with any OpenAI-compatible provider.
+                If ChatGPT sign-in does not work for your account, switch to
+                <b>Your own API key</b> above.
               </p>
             </div>
           </details>
@@ -321,34 +310,21 @@
               <button id="cfg-cg-test" class="ghost tiny" type="button">Send a test request</button>
             </div>
 
-            <label>
-              Helper address
-              <input id="cfg-helperUrl" type="text" spellcheck="false" placeholder="http://127.0.0.1:8788" />
-            </label>
-
             <details class="help">
-              <summary>Why the Helper?</summary>
+              <summary>Advanced (developers)</summary>
               <div class="help-body">
                 <p>
-                  The Helper is part of this project — not an OpenAI product. It
-                  is a small program that runs on this Mac and holds your ChatGPT
-                  sign-in. OpenAI's sign-in for open-source apps only accepts a
-                  callback to <code>127.0.0.1</code>, which a browser extension
-                  cannot provide, so this extension asks the Helper to do it.
-                </p>
-                <p>
-                  <b>Install it:</b> the macOS installer is not published yet, so
-                  there is nothing to download today.
-                  <a href="https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases" target="_blank" rel="noopener">View Helper releases</a>
-                  — once it is there, it installs the Helper and starts it in the
-                  background. Otherwise, start it with:
+                  The Helper installs once with the macOS <code>.pkg</code> and
+                  runs in the background. If you run it from source instead:
                 </p>
                 <p><code id="cfg-cg-cmd">node helper/siwc-helper.js</code></p>
+                <label>
+                  Helper address
+                  <input id="cfg-helperUrl" type="text" spellcheck="false" placeholder="http://127.0.0.1:8788" />
+                </label>
                 <p>
                   <b>Send a test request</b> spends a little of your plan's
-                  allowance. <b>Test Connection</b> below does not — it only
-                  checks that the helper is running, that you are signed in, and
-                  that the model is one your account has.
+                  allowance. <b>Test Connection</b> does not.
                 </p>
               </div>
             </details>

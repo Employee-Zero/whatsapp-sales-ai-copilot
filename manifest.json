@@ -5,40 +5,47 @@
   "version": "0.1.1",
   "description": "An AI assistant for salespeople on WhatsApp Web: draft a reply from the conversation in front of you, edit it, then send it yourself. Works with your own API key or your ChatGPT plan.",
   "minimum_chrome_version": "116",
-
   "permissions": [
     "sidePanel",
     "storage",
     "scripting",
     "activeTab"
   ],
-
   "host_permissions": [
     "https://web.whatsapp.com/*"
   ],
-
   "optional_host_permissions": [
     "https://*/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
-
   "background": {
     "service_worker": "src/background/service-worker.js",
     "type": "module"
   },
-
-  "action": {
-    "default_title": "WhatsApp Sales AI Copilot"
+  "icons": {
+    "16": "src/icons/icon-16.png",
+    "32": "src/icons/icon-32.png",
+    "48": "src/icons/icon-48.png",
+    "128": "src/icons/icon-128.png"
   },
-
+  "action": {
+    "default_title": "WhatsApp Sales AI Copilot",
+    "default_icon": {
+      "16": "src/icons/icon-16.png",
+      "32": "src/icons/icon-32.png",
+      "48": "src/icons/icon-48.png",
+      "128": "src/icons/icon-128.png"
+    }
+  },
   "side_panel": {
     "default_path": "src/sidepanel/sidepanel.html"
   },
-
   "content_scripts": [
     {
-      "matches": ["https://web.whatsapp.com/*"],
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
       "js": [
         "src/shared/constants.classic.js",
         "src/shared/utils.classic.js",
@@ -49,11 +56,17 @@
       "all_frames": false
     }
   ],
-
   "web_accessible_resources": [
     {
-      "resources": ["src/shared/constants.js", "src/shared/utils.js", "src/shared/constants.classic.js", "src/shared/utils.classic.js"],
-      "matches": ["https://web.whatsapp.com/*"]
+      "resources": [
+        "src/shared/constants.js",
+        "src/shared/utils.js",
+        "src/shared/constants.classic.js",
+        "src/shared/utils.classic.js"
+      ],
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ]
     }
   ]
 }

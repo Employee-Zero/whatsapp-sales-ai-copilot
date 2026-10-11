@@ -179,9 +179,24 @@ rm -f "$PKG_PATH"
 # Installer.app the same way a product archive does; the product archive would
 # only add a welcome screen and a title, which is not worth a second build step
 # and a second build tool.
-/usr/bin/pkgbuild \
+# Installer.app runs ./postinstall directly, so the file must be executable and
+# must start with a shebang. A checkout that lost the mode bit (or a copy that
+# added a com.apple.provenance xattr, which pkgbuild archives as ._postinstall)
+# produced a package that failed with "postinstall does not exist" (PKInstallError
+# 112). So the scripts are staged into a clean directory and fixed here, instead
+# of trusting whatever mode the source tree happens to have.
+SCRIPTS="${STAGE}/scripts"
+mkdir -p "$SCRIPTS"
+cp "${INSTALLER_DIR}/macos/scripts/postinstall" "${SCRIPTS}/postinstall"
+chmod 755 "${SCRIPTS}/postinstall"
+/usr/bin/xattr -cr "$SCRIPTS" "$PAYLOAD" 2>/dev/null || true
+[ -x "${SCRIPTS}/postinstall" ] || die "postinstall is not executable."
+[ "$(head -c 2 "${SCRIPTS}/postinstall")" = "#!" ] || die "postinstall has no shebang."
+if /usr/bin/grep -q $'\r' "${SCRIPTS}/postinstall"; then die "postinstall has CRLF line endings."; fi
+
+COPYFILE_DISABLE=1 /usr/bin/pkgbuild \
 	--root "$PAYLOAD" \
-	--scripts "${INSTALLER_DIR}/macos/scripts" \
+	--scripts "$SCRIPTS" \
 	--identifier "$LABEL" \
 	--version "$HELPER_VERSION" \
 	--install-location / \

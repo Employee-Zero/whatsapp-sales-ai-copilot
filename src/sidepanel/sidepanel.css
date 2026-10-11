@@ -789,8 +789,8 @@ button.quick {
   align-items: center;
   justify-content: flex-start;
   text-align: left;
-  background: #dff3ec;
-  border: 1px solid #bfe7d9;
+  background: #d3f0e4;
+  border: 1.5px solid #5fbf9d;
   border-radius: 10px;
   color: var(--accent-dark);
 }
@@ -799,8 +799,18 @@ button.quick:hover:not(:disabled) {
   background: #d0ebdf;
 }
 
+/* Disabled stays legible: a flat grey card with its own border and dark-enough
+   text, not a faded copy of the enabled one. */
 button.quick:disabled {
-  opacity: 0.5;
+  background: #eef2f1;
+  border-color: #cfd8d5;
+  color: #6b7a76;
+  cursor: not-allowed;
+}
+
+button.quick:disabled .txt small {
+  color: #6b7a76;
+  opacity: 1;
 }
 
 button.quick .bolt {
@@ -1339,4 +1349,20 @@ button.quick .txt small {
   color: var(--muted);
   font-size: 11.5px;
   line-height: 1.45;
+}
+
+/* First-run ChatGPT path: three plain steps under the "why a Helper" note. */
+.why-steps {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.why-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
 }

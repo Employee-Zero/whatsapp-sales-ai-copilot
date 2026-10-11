@@ -83,7 +83,7 @@ async function main() {
   check('nothing from tools/ shipped', !entries.some((e) => e.startsWith('tools/')), entries.filter((e) => e.startsWith('tools/')).join(', '));
   check('the dev bridge did not ship', !entries.some((e) => e.startsWith('src/test/')), entries.filter((e) => e.startsWith('src/test/')).join(', '));
   check('no git history', !entries.some((e) => e.startsWith('.git/')));
-  check('no docs or screenshots', !entries.some((e) => /^(docs|dist)\//.test(e) || /\.(md|png)$/i.test(e)));
+  check('no docs or screenshots', !entries.some((e) => /^(docs|dist)\//.test(e) || (/\.(md|png)$/i.test(e) && !e.startsWith('src/icons/'))));
   check('it is not empty', entries.length > 5, `${entries.length} entries`);
 
   // The panel tells the user to run `node helper/siwc-helper.js` from the folder

@@ -23,6 +23,27 @@ PREFIX="__PREFIX__"
 LOG_DIR="${HOME}/Library/Logs/whatsapp-sales-ai-copilot"
 LOG_FILE="${LOG_DIR}/helper.log"
 
+# Follow the macOS system HTTP/HTTPS proxy (Stash, Surge, ...) when one is on.
+# Node's fetch ignores System Settings, but honours HTTP(S)_PROXY when
+# NODE_USE_ENV_PROXY=1, so the settings are read once at launch and exported.
+# Loopback is always excluded. Not handled: PAC/auto-config proxies, SOCKS, and
+# a proxy turned on after the helper started (it is picked up at the next
+# restart or login).
+if [ -z "${HTTPS_PROXY:-}${https_proxy:-}" ]; then
+	PROXY_INFO="$(/usr/sbin/scutil --proxy 2>/dev/null)"
+	proxy_field() { printf '%s\n' "$PROXY_INFO" | /usr/bin/awk -v k="$1" '$1 == k { print $3; exit }'; }
+	if [ "$(proxy_field HTTPSEnable)" = "1" ] && [ -n "$(proxy_field HTTPSProxy)" ]; then
+		export HTTPS_PROXY="http://$(proxy_field HTTPSProxy):$(proxy_field HTTPSPort)"
+	fi
+	if [ "$(proxy_field HTTPEnable)" = "1" ] && [ -n "$(proxy_field HTTPProxy)" ]; then
+		export HTTP_PROXY="http://$(proxy_field HTTPProxy):$(proxy_field HTTPPort)"
+	fi
+fi
+if [ -n "${HTTPS_PROXY:-}${HTTP_PROXY:-}" ]; then
+	export NODE_USE_ENV_PROXY=1
+	export NO_PROXY="127.0.0.1,localhost,::1${NO_PROXY:+,$NO_PROXY}"
+fi
+
 if /bin/mkdir -p "$LOG_DIR" 2>/dev/null && : >>"$LOG_FILE" 2>/dev/null; then
 	/bin/chmod 700 "$LOG_DIR" 2>/dev/null
 	/bin/chmod 600 "$LOG_FILE" 2>/dev/null
