@@ -40,25 +40,65 @@ Uses the ChatGPT plan you already pay for — **no API key needed**. In the exte
 2. **Allow Local Access.** Click **Allow Access** and accept Chrome's prompt. This only lets the extension talk to the Connector on your own computer.
 3. **Continue with ChatGPT.** A tab opens at OpenAI — sign in and accept the plan permissions. Back in the extension, pick a **Model** and click **Save & Continue**.
 
-### macOS installation: what to do if Apple blocks the Connector
+### macOS installation: illustrated walkthrough
 
-The ChatGPT Connector is currently **not signed with an Apple Developer ID or notarized by Apple**, so your Mac may block the installer. This does not prove that the file is safe: **only continue if you downloaded it from the [official Employee Zero release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v0.1.2)** and you trust the source. You **do not need to disable macOS security settings**.
+The **ChatGPT Connector** is not yet signed with an Apple Developer ID or notarized by Apple. macOS may block the installer. **Only proceed if you downloaded the file from our [official GitHub Release](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/releases/tag/v0.1.2) and trust its source.** Do not turn off macOS security protections.
 
-**1 — Click Done on the first warning.** Double-click the downloaded `.pkg`. If macOS shows **“Not Opened”**, click **Done** (do not click *Move to Trash*).
+#### Step 1 — Close the first warning
 
-![macOS warning that the Connector installer could not be verified (example from a user's report)](https://github.com/user-attachments/assets/4ad4ca8c-2215-4efa-92af-cea6a9bafd22)
+Double-click the downloaded `.pkg`. If macOS says **“Not Opened”**, click **Done** (not *Move to Trash*).
 
-**2 — Find Open Anyway.** Open **Apple menu  → System Settings → Privacy & Security**, scroll to **Security**, find the blocked installer message and click **Open Anyway**. If the button is missing, first try opening the same downloaded installer once more, then return to this screen.
+<a href="https://github.com/user-attachments/assets/7321da6a-1b27-4ee1-b2f4-e6b147971267"><img src="https://github.com/user-attachments/assets/7321da6a-1b27-4ee1-b2f4-e6b147971267" alt="Step 1: macOS first safety warning — click Done" width="325"></a>
 
-**3 — Confirm Open Anyway.** In the new confirmation dialog, click **Open Anyway** again. Authenticate with your Mac password or Touch ID if prompted.
+#### Step 2 — Open Privacy & Security
 
-**4 — Finish installation.** Follow the installer windows until you see **“The installation was successful”**, then click **Close**. A notification that **ChatGPT Connector can run in the background** is normal.
+Go to **Apple menu  → System Settings → Privacy & Security**, scroll down to **Security** and click **Open Anyway** beside the blocked installer.
 
-**5 — Return to the Chrome extension.** Click **Recheck** if necessary. Confirm **Install ChatGPT Connector → ✓ Ready** and **Allow Local Access → ✓ Allowed**, then click **Continue with ChatGPT**. Sign in and authorize access, return to WhatsApp Web, choose a model and save. A **“You are signed in”** browser tab indicates authorization succeeded; you can close that tab.
+<a href="https://github.com/user-attachments/assets/89760468-04a4-42bd-b4b7-d900f896e5e1"><img src="https://github.com/user-attachments/assets/89760468-04a4-42bd-b4b7-d900f896e5e1" alt="Step 2: Privacy & Security — find Open Anyway" width="690"></a>
 
-> **Troubleshooting:** If the Connector still shows *Not installed* after installation, verify Chrome **Allow Local Access** is allowed, then click **Recheck**. A missing ✓ Ready indicates the local background service is not reachable, not necessarily that the package failed to install.
+If the button is not visible, try opening the downloaded `.pkg` once, dismiss the warning, then check Privacy & Security again.
+
+#### Step 3 — Confirm the installer
+
+In the second macOS warning, click **Open Anyway** again.
+
+<a href="https://github.com/user-attachments/assets/82a0bfbe-35bc-40a0-81f9-8f6ae75e4e25"><img src="https://github.com/user-attachments/assets/82a0bfbe-35bc-40a0-81f9-8f6ae75e4e25" alt="Step 3: confirm Open Anyway in the second warning" width="690"></a>
+
+If prompted for administrator credentials, enter your Mac password (or use Touch ID) and confirm.
+
+<a href="https://github.com/user-attachments/assets/e5015041-e0a2-45c0-b235-364cf4624ecc"><img src="https://github.com/user-attachments/assets/e5015041-e0a2-45c0-b235-364cf4624ecc" alt="Step 3: authorize opening the installer with your Mac password" width="690"></a>
+
+#### Step 4 — Complete installation
+
+The installation wizard will open. Click **Continue** and follow its prompts.
+
+<a href="https://github.com/user-attachments/assets/14d57893-810e-411e-8278-bef71bb05632"><img src="https://github.com/user-attachments/assets/14d57893-810e-411e-8278-bef71bb05632" alt="Step 4: click Continue in the installation wizard" width="690"></a>
+
+Wait for **“The installation was successful”**, then click **Close**.
+
+<a href="https://github.com/user-attachments/assets/a7ecfcc2-e775-4f36-9d0e-c53ab941c967"><img src="https://github.com/user-attachments/assets/a7ecfcc2-e775-4f36-9d0e-c53ab941c967" alt="Step 4: the installer reports a successful installation" width="690"></a>
+
+A macOS notification that **ChatGPT Connector can run in the background** is normal.
+
+<a href="https://github.com/user-attachments/assets/d863641b-7812-4ce9-8305-0d6b031c0b2c"><img src="https://github.com/user-attachments/assets/d863641b-7812-4ce9-8305-0d6b031c0b2c" alt="Step 4: background activity notification for ChatGPT Connector" width="520"></a>
+
+#### Step 5 — Connect ChatGPT inside the extension
+
+Return to WhatsApp Web and open **Sales AI Copilot → ChatGPT**.
+
+Check that **Install ChatGPT Connector → ✓ Ready** and **Allow Local Access → ✓ Allowed**. If necessary, click **Recheck** or allow local access.
+
+<a href="https://github.com/user-attachments/assets/6f65cf3e-abd6-4379-94a4-fb1bf524a40d"><img src="https://github.com/user-attachments/assets/6f65cf3e-abd6-4379-94a4-fb1bf524a40d" alt="Step 5: Connector Ready and Local Access Allowed" width="440"></a>
+
+Click **Continue with ChatGPT**, sign in and approve access.
+
+<a href="https://github.com/user-attachments/assets/3aaec696-aaf8-461b-806c-236a19ec072e"><img src="https://github.com/user-attachments/assets/3aaec696-aaf8-461b-806c-236a19ec072e" alt="Step 5: click Continue with ChatGPT to sign in" width="440"></a>
+
+When the browser shows **“You are signed in”**, close that tab and return to WhatsApp Web. Select your **Model** and click **Save & Continue**. **Never share screenshots showing a full localhost OAuth callback URL or authorization code.**
+
+> **Still showing “Not installed”?** Confirm **Allow Local Access → Allowed**, then click **Recheck**. The status may mean the background service is not reachable, not necessarily that installation failed.
 >
-> **For image-by-image support**, see [Installation issue #3](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/issues/3). The extension also has a collapsible *macOS blocked the installer? How to open it* guide beneath **Download for Mac**.
+> More help: [Installation issue #3](https://github.com/Employee-Zero/whatsapp-sales-ai-copilot/issues/3). Inside the extension, the **macOS blocked the installer? How to open it** help can also be expanded beneath **Download for Mac**.
 
 **Cost.** Replies use your ChatGPT plan's allowance, shared with ChatGPT itself — not unlimited. OpenAI decides at sign-in whether your plan can be used this way. A ChatGPT subscription is separate from API credit.
 
